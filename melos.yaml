@@ -1,0 +1,56 @@
+name: oneplus_toolbox_workspace
+
+# 分层（箭头表示依赖方向，只能向下依赖，由 `melos run check:layers` 强制检查）：
+#
+#   apps/oneplus_toolbox        UI：页面、组件、交互状态
+#        │
+#        ▼
+#   packages/toolbox_service    业务：设备监测、Root / 解锁 / 槽位 / 双开流程、目录、设置、更新
+#        │
+#        ▼
+#   packages/toolbox_commands   命令：adb / fastboot / payload_dumper / 7-Zip / 校验下载 / 手机端脚本
+#        │
+#        ▼
+#   packages/toolbox_core       共享模型、内置方案目录、校验规则、取消令牌（纯 Dart，无 IO）
+packages:
+  - apps/**
+  - packages/**
+
+scripts:
+  analyze:
+    description: 静态检查所有包
+    run: melos exec -c 1 -- dart analyze . --fatal-infos
+
+  format:
+    description: 格式化所有包
+    run: melos exec -c 1 -- dart format -l 120 .
+
+  format:check:
+    description: 检查格式（CI 用）
+    run: melos exec -c 1 -- dart format -l 120 --set-exit-if-changed .
+
+  test:
+    description: 运行所有包的测试
+    steps:
+      - test:dart
+      - test:flutter
+
+  test:dart:
+    description: 纯 Dart 包的测试
+    run: melos exec -c 1 --no-flutter --dir-exists=test -- dart test
+
+  test:flutter:
+    description: Flutter 包的测试
+    run: melos exec -c 1 --flutter --dir-exists=test -- flutter test
+
+  fetch-tools:
+    description: 下载并校验运行所需的第三方工具到 resources/bin
+    run: dart run tool/fetch_tools.dart
+
+  check:layers:
+    description: 检查各层只依赖下层（UI 不能直接调用命令层）
+    run: dart run tool/check_layers.dart
+
+  build:windows:
+    description: 构建 Windows 版（需先 melos run fetch-tools 准备工具）
+    run: melos exec --scope=oneplus_toolbox -- flutter build windows --release

@@ -1,0 +1,14 @@
+name: oneplus_toolbox_workspace
+description: 一加工具箱 Flutter 版的 melos 工作区根目录（不发布），tool/ 下是仓库脚本
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dev_dependencies:
+  archive: ^3.6.1
+  crypto: ^3.0.3
+  melos: ^6.3.2
+  path: ^1.9.0
+  yaml: ^3.1.2
+  lints: ^4.0.0

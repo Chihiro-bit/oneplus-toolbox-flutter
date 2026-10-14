@@ -1,0 +1,17 @@
+name: toolbox_commands
+description: 一加工具箱的命令层：调用 adb / fastboot / payload_dumper / 7-Zip、校验下载、生成手机端脚本。不含业务判断。
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  crypto: ^3.0.3
+  path: ^1.9.0
+  toolbox_core:
+    path: ../toolbox_core
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0
