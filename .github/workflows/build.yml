@@ -1,0 +1,130 @@
+name: Build
+
+# - 推送到 main、提交 PR：静态检查、分层检查、测试，并构建 Windows 版（产物在 Actions 页面下载）
+# - 推送 v 开头的标签（例如 v1.0.0）：用标签设置版本号，另外创建一个 Release 草稿。
+#   草稿需要在 GitHub 上检查后手动点「Publish release」才会公开。
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  FLUTTER_VERSION: '3.22.2'
+
+jobs:
+  check:
+    # commands 包的 exec 测试依赖 Windows 的 cmd / ping，所以检查也在 Windows 上跑
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 安装依赖
+        run: |
+          dart pub get
+          dart run melos bootstrap
+
+      - name: 静态检查
+        run: dart run melos run analyze
+
+      - name: 格式检查
+        run: dart run melos run format:check
+
+      - name: 分层检查
+        run: dart run melos run check:layers
+
+      - name: 测试
+        run: dart run melos run test
+
+  build:
+    needs: check
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: 安装依赖
+        run: |
+          dart pub get
+          dart run melos bootstrap
+
+      - name: 确定版本号
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$(grep -m1 '^version:' apps/oneplus_toolbox/pubspec.yaml | sed -E 's/^version: *([^+ ]+).*/\1/')"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "版本号：$version"
+
+      - name: 缓存第三方工具
+        uses: actions/cache@v4
+        with:
+          path: .tools-cache
+          key: tools-${{ hashFiles('tool/fetch_tools.dart') }}
+
+      - name: 下载第三方工具
+        run: dart run melos run fetch-tools
+
+      - name: 构建 Windows 版
+        working-directory: apps/oneplus_toolbox
+        run: >-
+          flutter build windows --release
+          --build-name=${{ steps.version.outputs.version }}
+          --build-number=${{ github.run_number }}
+          --dart-define=TOOLBOX_VERSION=${{ steps.version.outputs.version }}
+          --dart-define=TOOLBOX_UPDATE_REPO=${{ github.repository }}
+
+      - name: 打包
+        id: package
+        shell: bash
+        run: |
+          name="OnePlusToolbox-Flutter-${{ steps.version.outputs.version }}-win-x64"
+          release=apps/oneplus_toolbox/build/windows/x64/runner/Release
+          test -f "$release/bin/platform-tools/adb.exe" || { echo "安装目录中缺少第三方工具"; exit 1; }
+          cp LICENSE THIRD_PARTY_NOTICES.md "$release/"
+          mkdir -p dist
+          (cd "$release" && 7z a -tzip "$GITHUB_WORKSPACE/dist/$name.zip" . > /dev/null)
+          (cd dist && sha256sum *.zip > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: dist/
+          retention-days: 14
+
+      - name: 创建 Release 草稿
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            dist/*.zip
+            dist/SHA256SUMS.txt

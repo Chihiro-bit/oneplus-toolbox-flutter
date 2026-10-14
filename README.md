@@ -52,6 +52,14 @@ melos run build:windows  # 发布版，输出在 apps/oneplus_toolbox/build/wind
 
 构建时可用 `--dart-define=TOOLBOX_VERSION=x.y.z` 和 `--dart-define=TOOLBOX_UPDATE_REPO=owner/repo` 指定版本号和默认更新仓库（对应 TS 版的 `TOOLBOX_UPDATE_REPO` 环境变量）。
 
+## 持续集成与发布
+
+`.github/workflows/build.yml`：
+
+- 推送到 main、提交 PR：运行静态检查、格式检查、分层检查和全部测试，然后构建 Windows 版，zip 包可在 Actions 页面下载（保留 14 天）
+- 推送 `v` 开头的标签（如 `git tag v0.2.0 && git push origin v0.2.0`）：用标签作为版本号构建，并创建 Release 草稿（附 zip 和 `SHA256SUMS.txt`），检查后在 GitHub 上手动发布
+- 构建时把当前仓库写入「检查更新」的默认仓库
+
 ## 许可证
 
 Apache License 2.0，见 [LICENSE](LICENSE)。随程序分发的第三方组件见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
