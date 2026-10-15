@@ -4,6 +4,7 @@ import 'package:toolbox_service/toolbox_service.dart';
 import 'controller.dart';
 import 'pages/apps_page.dart';
 import 'pages/device_pages.dart';
+import 'pages/edl_page.dart';
 import 'pages/overview_page.dart';
 import 'pages/page_id.dart';
 import 'pages/root_page.dart';
@@ -47,6 +48,7 @@ class _ShellState extends State<Shell> {
   UpdateInfo? _update;
   final _rootForm = RootForm();
   final _appsForm = AppsForm();
+  final _edlForm = EdlForm();
   final _scroll = ScrollController();
   bool _warning = false;
 
@@ -69,6 +71,7 @@ class _ShellState extends State<Shell> {
     tb.removeListener(_onChange);
     _rootForm.dispose();
     _appsForm.dispose();
+    _edlForm.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -102,6 +105,7 @@ class _ShellState extends State<Shell> {
         PageId.slot => SlotPage(tb: tb),
         PageId.apps => AppsPage(tb: tb, form: _appsForm),
         PageId.tools => ToolsPage(tb: tb),
+        PageId.edl => EdlPage(tb: tb, form: _edlForm),
         PageId.settings => SettingsPage(tb: tb),
       };
 

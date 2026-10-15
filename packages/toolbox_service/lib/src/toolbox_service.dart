@@ -10,6 +10,7 @@ import 'environment.dart';
 import 'ops/apps.dart' as apps;
 import 'ops/basic.dart' as basic;
 import 'ops/context.dart';
+import 'ops/edl.dart' as edl_op;
 import 'ops/root.dart' as root_op;
 import 'settings_store.dart';
 import 'update_checker.dart' as update;
@@ -149,6 +150,10 @@ class ToolboxService {
         CloneAppRequest(:final package, :final enable) => apps.cloneApp(package, ctx, enable: enable),
         InstallPlayRequest(:final apk) => apps.installPlay(apk, ctx),
         OtaUpdatesRequest(:final disable) => apps.otaUpdates(ctx, disable: disable),
+        EdlDetectRequest() => edl_op.edlDetect(ctx),
+        EdlProbeRequest(:final profile) => edl_op.edlProbe(profile, ctx),
+        EdlFlashRequest(:final profile) => edl_op.edlFlash(profile, ctx),
+        EdlResetRequest() => edl_op.edlReset(ctx),
       };
 
   /// 应用列表显示后在后台补全图标，独立于操作队列，失败只会少几个图标

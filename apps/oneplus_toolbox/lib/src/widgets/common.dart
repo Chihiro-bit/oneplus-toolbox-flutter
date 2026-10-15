@@ -133,6 +133,7 @@ class ModeBadge extends StatelessWidget {
       DeviceMode.system => (c.ok, c.okSoft),
       DeviceMode.fastboot => (c.info, c.infoSoft),
       DeviceMode.recovery || DeviceMode.unauthorized => (c.warn, c.warnSoft),
+      DeviceMode.edl => (c.danger, c.dangerSoft),
       DeviceMode.none => (c.muted, c.surface2),
     };
     final dot = Container(width: 7, height: 7, decoration: BoxDecoration(color: fg, shape: BoxShape.circle));

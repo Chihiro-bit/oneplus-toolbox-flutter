@@ -2,13 +2,14 @@
 
 // ───────────── 设备 ─────────────
 
-/// none=未连接，system=开机(adb)，recovery=Recovery(adb)，fastboot=Fastboot，unauthorized=adb 未授权
+/// none=未连接，system=开机(adb)，recovery=Recovery(adb)，fastboot=Fastboot，unauthorized=adb 未授权，edl=高通 9008 深刷
 enum DeviceMode {
   none('未连接'),
   system('开机'),
   recovery('Recovery'),
   fastboot('Fastboot'),
-  unauthorized('未授权');
+  unauthorized('未授权'),
+  edl('EDL');
 
   const DeviceMode(this.label);
   final String label;
@@ -28,6 +29,7 @@ class DeviceInfo {
     this.romVersion,
     this.slot,
     this.unlocked,
+    this.edlPort,
   });
 
   static const disconnected = DeviceInfo(mode: DeviceMode.none);
@@ -49,6 +51,9 @@ class DeviceInfo {
   /// 仅 fastboot 下可读
   final bool? unlocked;
 
+  /// 仅 edl 下可读：QDLoader 9008 占用的 COM 端口，如 COM5
+  final String? edlPort;
+
   /// 是否为一加设备。品牌或厂商任一包含 OnePlus 即可；两者都读不到时返回 null（例如首次以 Fastboot 连接）。
   /// 同属 OPlus 的 OPPO / realme 不算 —— 它们的解锁和刷机流程与一加不同。
   bool? get isOnePlus {
@@ -69,6 +74,7 @@ class DeviceInfo {
     String? romVersion,
     String? slot,
     bool? unlocked,
+    String? edlPort,
   }) =>
       DeviceInfo(
         mode: mode,
@@ -83,6 +89,7 @@ class DeviceInfo {
         romVersion: romVersion ?? this.romVersion,
         slot: slot ?? this.slot,
         unlocked: unlocked ?? this.unlocked,
+        edlPort: edlPort ?? this.edlPort,
       );
 }
 
@@ -97,6 +104,95 @@ enum RebootTarget {
 }
 
 enum PatchTarget { auto, boot, initBoot }
+
+// ───────────── 9008 救砖 ─────────────
+
+/// qdl 的目标存储类型
+enum EdlStorage {
+  ufs,
+  emmc,
+  nand,
+  nvme,
+  spinor;
+
+  static EdlStorage? tryParse(Object? name) {
+    for (final s in values) {
+      if (s.name == name) return s;
+    }
+    return null;
+  }
+}
+
+/// 检测到的一台 9008 设备
+class EdlDevice {
+  const EdlDevice({required this.port, required this.name});
+
+  /// 设备管理器里的 COM 端口，如 COM5
+  final String port;
+
+  /// 设备名称，如「Qualcomm HS-USB QDLoader 9008」
+  final String name;
+}
+
+/// 9008 刷写需要的一整套文件，全部由用户自备：
+/// 工具箱只做校验、排序、日志和风险提示，不打包也不下载这些文件。
+class EdlProfile {
+  const EdlProfile({
+    required this.programmer,
+    this.vipDir,
+    this.xmls = const [],
+    required this.imagesDir,
+    this.storage = EdlStorage.ufs,
+    this.protectLun5 = true,
+    this.allowMissing = false,
+    this.skipReset = false,
+    this.dryRunOnly = false,
+  });
+
+  /// 设备编程器（devprg*.mbn / prog_firehose_ddr.elf）
+  final String programmer;
+
+  /// 预签名 VIP 摘要表所在目录，留空表示设备不需要（未启用安全启动）
+  final String? vipDir;
+
+  /// rawprogram*.xml / patch*.xml
+  final List<String> xmls;
+
+  /// 散包镜像所在目录（qdl --include）
+  final String imagesDir;
+  final EdlStorage storage;
+
+  /// 保护 LUN5：跳过 rawprogram5 / patch5
+  final bool protectLun5;
+
+  /// 散包里缺少某些镜像时跳过而不中止（qdl --allow-missing）
+  final bool allowMissing;
+
+  /// 刷完不重启，把设备留在 9008
+  final bool skipReset;
+
+  /// 只做预检（qdl --dry-run），不连设备、不刷写
+  final bool dryRunOnly;
+}
+
+/// 检测 / 自检的结果，回填到界面上
+class EdlState {
+  const EdlState({this.ports = const [], this.qdlList, this.chipInfo, this.saharaOk = false, this.command});
+
+  final List<EdlDevice> ports;
+
+  /// qdl list 的原始输出
+  final String? qdlList;
+
+  /// qdl chipinfo 的原始输出（Sahara 只读）
+  final String? chipInfo;
+
+  /// Sahara 能否读到芯片信息
+  final bool saharaOk;
+
+  /// 传给 qdl 的最终参数，便于用户核对
+  final String? command;
+}
 
 // ───────────── Root 方案目录 ─────────────
 
@@ -323,6 +419,32 @@ class OtaUpdatesRequest extends OperationRequest {
   String get description => disable ? '禁用系统更新' : '恢复系统更新';
 }
 
+class EdlDetectRequest extends OperationRequest {
+  const EdlDetectRequest();
+  @override
+  String get description => '查找 9008 设备';
+}
+
+class EdlProbeRequest extends OperationRequest {
+  const EdlProbeRequest(this.profile);
+  final EdlProfile profile;
+  @override
+  String get description => '9008 预检（只读）';
+}
+
+class EdlFlashRequest extends OperationRequest {
+  const EdlFlashRequest(this.profile);
+  final EdlProfile profile;
+  @override
+  String get description => profile.dryRunOnly ? '9008 预检（只读）' : '9008 刷写';
+}
+
+class EdlResetRequest extends OperationRequest {
+  const EdlResetRequest();
+  @override
+  String get description => '退出 9008';
+}
+
 enum LogLevel { info, cmd, ok, warn, error, step }
 
 class LogEntry {
@@ -337,12 +459,13 @@ class LogEntry {
 typedef LogSink = void Function(LogLevel level, String text);
 
 class OperationResult {
-  const OperationResult({required this.ok, required this.message, this.outputPath, this.apps});
+  const OperationResult({required this.ok, required this.message, this.outputPath, this.apps, this.edl});
 
   const OperationResult.fail(this.message)
       : ok = false,
         outputPath = null,
-        apps = null;
+        apps = null,
+        edl = null;
 
   final bool ok;
   final String message;
@@ -352,6 +475,9 @@ class OperationResult {
 
   /// listApps 的结果
   final List<AppEntry>? apps;
+
+  /// 9008 检测 / 自检的结果
+  final EdlState? edl;
 }
 
 // ───────────── 设置与更新 ─────────────

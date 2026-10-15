@@ -116,6 +116,7 @@ class OverviewPage extends StatelessWidget {
             _Tile(Icons.swap_horiz, 'A/B 槽位切换', '变砖时的自救手段', () => go(PageId.slot)),
             _Tile(Icons.filter_none, '应用双开', '把任意应用克隆到分身空间', () => go(PageId.apps)),
             _Tile(Icons.build_outlined, '系统工具', 'Play 商店、禁用系统更新', () => go(PageId.tools)),
+            _Tile(Icons.healing_outlined, '9008 救砖', '高通 EDL 深刷，文件自备', () => go(PageId.edl)),
           ],
         ),
       ],

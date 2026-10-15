@@ -11,5 +11,6 @@ export 'src/exec.dart';
 export 'src/fastboot.dart';
 export 'src/patch_script.dart';
 export 'src/payload_dumper.dart';
+export 'src/qdl.dart';
 export 'src/seven_zip.dart';
 export 'src/tool_paths.dart';

@@ -19,6 +19,9 @@ class ToolPaths {
   /// Android 端的 aapt2，推到手机上读取应用名
   String get aapt2 => p.join(binDir, 'aapt2');
 
+  /// 高通 9008 / EDL 刷写工具，随附的 DLL 必须与它同目录
+  String get qdl => p.join(binDir, 'qdl', 'qdl.exe');
+
   Map<String, String> get all => {
         'adb': adb,
         'fastboot': fastboot,
@@ -26,6 +29,7 @@ class ToolPaths {
         'payloadDumper': payloadDumper,
         'magiskApk': magiskApk,
         'aapt2': aapt2,
+        'qdl': qdl,
       };
 
   List<String> missing() => [

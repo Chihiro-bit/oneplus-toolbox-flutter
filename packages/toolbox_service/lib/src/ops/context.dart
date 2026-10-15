@@ -32,6 +32,7 @@ class OpContext {
   late final fastboot = Fastboot(tools.fastboot, cancel: cancel, log: log);
   late final payloadDumper = PayloadDumper(tools.payloadDumper, cancel: cancel, log: log);
   late final sevenZip = SevenZip(tools.sevenZip, cancel: cancel, log: log);
+  late final qdl = Qdl(tools.qdl, cancel: cancel, log: log);
 
   /// 恰好连接了一台可用设备，返回它
   Future<DeviceInfo> requireDevice() async {

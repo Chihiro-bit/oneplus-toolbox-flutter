@@ -5,10 +5,10 @@ name: oneplus_toolbox_workspace
 #   apps/oneplus_toolbox        UI：页面、组件、交互状态
 #        │
 #        ▼
-#   packages/toolbox_service    业务：设备监测、Root / 解锁 / 槽位 / 双开流程、目录、设置、更新
+#   packages/toolbox_service    业务：设备监测、Root / 解锁 / 槽位 / 双开 / 9008 流程、目录、设置、更新
 #        │
 #        ▼
-#   packages/toolbox_commands   命令：adb / fastboot / payload_dumper / 7-Zip / 校验下载 / 手机端脚本
+#   packages/toolbox_commands   命令：adb / fastboot / payload_dumper / 7-Zip / qdl / 校验下载 / 手机端脚本
 #        │
 #        ▼
 #   packages/toolbox_core       共享模型、内置方案目录、校验规则、取消令牌（纯 Dart，无 IO）
@@ -50,6 +50,10 @@ scripts:
   check:layers:
     description: 检查各层只依赖下层（UI 不能直接调用命令层）
     run: dart run tool/check_layers.dart
+
+  screenshots:
+    description: 用模拟数据重新生成 docs/screenshots 下的 README 截图（需在 Windows 上运行）
+    run: melos exec --scope=oneplus_toolbox -- flutter test tool/screenshots
 
   build:windows:
     description: 构建 Windows 版（需先 melos run fetch-tools 准备工具）

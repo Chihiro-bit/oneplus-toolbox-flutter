@@ -75,6 +75,33 @@ const List<Tool> tools = [
     tarGz: false,
     file: 'magisk.apk',
   ),
+  (
+    name: 'qdl v2.8（高通 9008 / EDL 刷写）',
+    url: 'https://github.com/linux-msm/qdl/releases/download/v2.8/qdl-binary-windows-x64-v2.8.zip',
+    sha256: 'f013b0a38660957feb5959ee5c625013089e9a1f9a9f5e7f21eb0cbd1cdee159',
+    entries: {
+      'qdl-binary-windows-x64/qdl.exe': 'qdl/qdl.exe',
+      'qdl-binary-windows-x64/libusb-1.0.dll': 'qdl/libusb-1.0.dll',
+      'qdl-binary-windows-x64/libxml2-16.dll': 'qdl/libxml2-16.dll',
+      'qdl-binary-windows-x64/libzip.dll': 'qdl/libzip.dll',
+      'qdl-binary-windows-x64/libbz2-1.dll': 'qdl/libbz2-1.dll',
+      'qdl-binary-windows-x64/libiconv-2.dll': 'qdl/libiconv-2.dll',
+      'qdl-binary-windows-x64/liblzma-5.dll': 'qdl/liblzma-5.dll',
+      'qdl-binary-windows-x64/libzstd.dll': 'qdl/libzstd.dll',
+      'qdl-binary-windows-x64/zlib1.dll': 'qdl/zlib1.dll',
+    },
+    tarGz: false,
+    file: null,
+  ),
+  (
+    // qdl 的发布包里没有许可证文件，按 BSD-3-Clause 的要求单独随附
+    name: 'qdl LICENSE（BSD-3-Clause）',
+    url: 'https://raw.githubusercontent.com/linux-msm/qdl/v2.8/LICENSE',
+    sha256: '85814c88fc75be2523c03551ee2abefc0c30b423edda343197796e0c0e168058',
+    entries: null,
+    tarGz: false,
+    file: 'qdl/LICENSE',
+  ),
 ];
 
 String _sha256(List<int> bytes) => sha256.convert(bytes).toString();

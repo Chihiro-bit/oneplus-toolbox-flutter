@@ -8,6 +8,7 @@ enum PageId {
   slot('A/B 槽位', Icons.swap_horiz),
   apps('应用双开', Icons.filter_none),
   tools('系统工具', Icons.build_outlined),
+  edl('9008 救砖', Icons.healing_outlined),
   settings('设置', Icons.settings_outlined);
 
   const PageId(this.label, this.icon);

@@ -26,6 +26,24 @@ Future<String?> pickApk() async {
   return f?.path;
 }
 
+XTypeGroup _group(List<String> extensions) =>
+    extensions.isEmpty ? const XTypeGroup(label: '所有文件') : XTypeGroup(label: '文件', extensions: extensions);
+
+/// 选单个文件；extensions 为空表示不过滤
+Future<String?> pickFile(List<String> extensions) async {
+  final f = await openFile(confirmButtonText: '选择', acceptedTypeGroups: [_group(extensions)]);
+  return f?.path;
+}
+
+/// 选多个文件
+Future<List<String>> pickFiles(List<String> extensions) async {
+  final files = await openFiles(confirmButtonText: '选择', acceptedTypeGroups: [_group(extensions)]);
+  return [for (final f in files) f.path];
+}
+
+/// 选目录，取消返回 null
+Future<String?> pickDir() => getDirectoryPath(confirmButtonText: '选择');
+
 /// 用浏览器打开链接，只接受 http(s)
 Future<void> openExternal(String url) async {
   final uri = Uri.tryParse(url);

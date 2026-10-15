@@ -6,5 +6,6 @@
 - `lib/src/controller.dart`：把服务的各个流转成界面状态（对应 TS 版 `state.ts`）
 - `lib/src/pages/`：各功能页面
 - `lib/src/widgets/`：运行状态横幅、确认对话框、非一加设备警告、日志面板等公共组件
+- `tool/screenshots/`：README 截图脚本。用模拟的 `ToolboxService` 和文件选择对话框驱动真实界面，`melos run screenshots` 输出到仓库根目录的 `docs/screenshots`
 
 开发与构建说明见上级目录的 [README](../../README.md)。

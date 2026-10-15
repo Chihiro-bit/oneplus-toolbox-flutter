@@ -136,7 +136,7 @@ class _LogPanelState extends State<LogPanel> {
                                       _text(e),
                                       style: TextStyle(
                                         fontFamily: 'Consolas',
-                                        fontFamilyFallback: const ['Microsoft YaHei UI'],
+                                        fontFamilyFallback: const ['Microsoft YaHei UI', 'Segoe UI Symbol'],
                                         fontSize: 12,
                                         height: 1.5,
                                         fontWeight: e.level == LogLevel.step ? FontWeight.w600 : FontWeight.normal,

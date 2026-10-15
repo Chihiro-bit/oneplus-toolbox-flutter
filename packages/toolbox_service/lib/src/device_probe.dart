@@ -13,14 +13,43 @@ class DeviceProbe {
   /// 如果这台设备之前以开机状态连过，就沿用记下的信息。
   final _identity = <String, ({String? model, String? brand, String? manufacturer})>{};
 
-  /// adb devices / fastboot devices 双路探测
+  /// 9008 枚举较慢（一次 Get-PnpDevice 要 1~2 秒），只在 adb / fastboot 都没结果时查，
+  /// 且最多每 15 秒一次，避免待机时空耗 CPU。
+  static const _edlProbeInterval = Duration(seconds: 15);
+  DateTime _edlProbedAt = DateTime.fromMillisecondsSinceEpoch(0);
+  List<EdlDevice> _edlCache = const [];
+
+  /// adb devices / fastboot devices / 9008 三路探测
   Future<DeviceInfo> detect([CancelToken? cancel]) async {
     final list = [
       ...await Adb(_tools.adb, cancel: cancel).devices(),
       ...await Fastboot(_tools.fastboot, cancel: cancel).devices(),
     ];
+    if (list.isEmpty) {
+      if (DateTime.now().difference(_edlProbedAt) > _edlProbeInterval) {
+        _edlProbedAt = DateTime.now();
+        try {
+          _edlCache = await listEdlDevices(cancel);
+        } on CancelledException {
+          rethrow;
+        } catch (_) {
+          _edlCache = const [];
+        }
+      }
+      for (final d in _edlCache) {
+        list.add(RawDevice(d.port.isNotEmpty ? d.port : d.name, DeviceMode.edl, edlPort: d.port, label: d.name));
+      }
+    }
     if (list.isEmpty) return DeviceInfo.disconnected;
-    return DeviceInfo(mode: list.first.mode, serial: list.first.serial, multiple: list.length > 1);
+    final first = list.first;
+    return DeviceInfo(
+      mode: first.mode,
+      serial: first.serial,
+      multiple: list.length > 1,
+      // adb / fastboot 下 label 为空，型号由 describe() 补全；edl 下用设备管理器里的名称
+      device: first.label,
+      edlPort: first.edlPort,
+    );
   }
 
   /// 补全设备详情：开机/Recovery 读 getprop，Fastboot 读 getvar

@@ -122,7 +122,13 @@ ThemeData buildTheme(Brightness brightness) {
   final text = base.textTheme.apply(bodyColor: c.text, displayColor: c.text);
   final btnShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(8));
   const btnPadding = EdgeInsets.symmetric(horizontal: 14, vertical: 12);
-  const btnText = TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600);
+  // 按钮的 textStyle 不会继承主题字体，需要单独指定
+  const btnText = TextStyle(
+    fontFamily: 'Microsoft YaHei UI',
+    fontFamilyFallback: _fontFallback,
+    fontSize: 13.5,
+    fontWeight: FontWeight.w600,
+  );
   return base.copyWith(
     textTheme: text.copyWith(bodyMedium: text.bodyMedium?.copyWith(fontSize: 14, height: 1.55)),
     filledButtonTheme: FilledButtonThemeData(

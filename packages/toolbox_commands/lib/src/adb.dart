@@ -4,12 +4,18 @@ import 'package:toolbox_core/toolbox_core.dart';
 
 import 'exec.dart';
 
-/// adb devices / fastboot devices 列出的一台设备
+/// adb devices / fastboot devices / 9008 列出的一台设备
 class RawDevice {
-  const RawDevice(this.serial, this.mode);
+  const RawDevice(this.serial, this.mode, {this.edlPort, this.label});
 
   final String serial;
   final DeviceMode mode;
+
+  /// 仅 edl：QDLoader 9008 的 COM 端口
+  final String? edlPort;
+
+  /// 仅 edl：设备管理器里的名称
+  final String? label;
 }
 
 const _adbStates = {

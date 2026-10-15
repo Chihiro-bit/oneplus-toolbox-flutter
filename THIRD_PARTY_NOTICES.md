@@ -12,6 +12,7 @@
 | payload-dumper-rust | 0.8.4 | 读取 OTA 包元数据、提取 boot / init_boot（支持 URL） | Apache-2.0 | <https://github.com/rhythmcache/payload-dumper-rust> |
 | 7-Zip（7za.exe，经由 npm 包 7zip-bin） | 21.07 | 从线刷包中提取镜像 | GNU LGPL-2.1（含 unRAR 限制条款） | <https://www.7-zip.org/>、<https://github.com/develar/7zip-bin> |
 | aapt2（Android arm64 构建） | ReVanced/aapt2 v1.1.0 | 推送到手机上读取应用名称和图标 | AOSP 源码为 Apache-2.0；构建脚本为 GPL-3.0 | <https://github.com/ReVanced/aapt2>、<https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/tools/aapt2/> |
+| qdl（qdl.exe 及其自带的 libusb / libxml2 / libzip 等运行库 DLL） | 2.8 | 与处于 9008（EDL）模式的设备通信、刷写分区 | BSD-3-Clause，许可证全文随附在 `qdl/LICENSE` | <https://github.com/linux-msm/qdl> |
 | Magisk（APK） | 30.7 | 离线 Root 方案 | GPL-3.0 | <https://github.com/topjohnwu/Magisk> |
 
 ## 运行时按需下载（不随安装包分发）
