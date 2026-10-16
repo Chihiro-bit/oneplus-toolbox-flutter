@@ -26,7 +26,8 @@ typedef Tool = ({
   String? file,
 });
 
-const List<Tool> tools = [
+// 不能是 const：scrcpy 的 entries 用 for 生成
+final List<Tool> tools = [
   (
     name: 'Android SDK Platform-Tools r37.0.1（adb / fastboot）',
     url: 'https://dl.google.com/android/repository/platform-tools_r37.0.1-win.zip',
