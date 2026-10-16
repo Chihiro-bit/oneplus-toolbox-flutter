@@ -33,22 +33,29 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
+      # melos.yaml 里的脚本会再调用 melos 命令，所以要全局安装并加到 PATH（版本与 pubspec.lock 一致）
+      - name: 安装 melos
+        run: |
+          dart pub global activate melos 6.3.2
+          $pubCache = if ($env:PUB_CACHE) { $env:PUB_CACHE } else { "$env:LOCALAPPDATA\Pub\Cache" }
+          "$pubCache\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
       - name: 安装依赖
         run: |
           dart pub get
-          dart run melos bootstrap
+          melos bootstrap
 
       - name: 静态检查
-        run: dart run melos run analyze
+        run: melos run analyze
 
       - name: 格式检查
-        run: dart run melos run format:check
+        run: melos run format:check
 
       - name: 分层检查
-        run: dart run melos run check:layers
+        run: melos run check:layers
 
       - name: 测试
-        run: dart run melos run test
+        run: melos run test
 
   build:
     needs: check
@@ -64,10 +71,17 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
+      # melos.yaml 里的脚本会再调用 melos 命令，所以要全局安装并加到 PATH（版本与 pubspec.lock 一致）
+      - name: 安装 melos
+        run: |
+          dart pub global activate melos 6.3.2
+          $pubCache = if ($env:PUB_CACHE) { $env:PUB_CACHE } else { "$env:LOCALAPPDATA\Pub\Cache" }
+          "$pubCache\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
       - name: 安装依赖
         run: |
           dart pub get
-          dart run melos bootstrap
+          melos bootstrap
 
       - name: 确定版本号
         id: version
@@ -88,7 +102,7 @@ jobs:
           key: tools-${{ hashFiles('tool/fetch_tools.dart') }}
 
       - name: 下载第三方工具
-        run: dart run melos run fetch-tools
+        run: melos run fetch-tools
 
       - name: 构建 Windows 版
         working-directory: apps/oneplus_toolbox
