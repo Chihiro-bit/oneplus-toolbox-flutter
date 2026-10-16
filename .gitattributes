@@ -1,0 +1,2 @@
+# 发到手机上执行的脚本和测试用的 golden 文件必须是 LF，否则 Windows 上 checkout 会转成 CRLF 导致测试失败
+*.sh text eol=lf
