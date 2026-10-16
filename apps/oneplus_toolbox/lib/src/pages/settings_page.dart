@@ -35,6 +35,12 @@ class _SettingsPageState extends State<SettingsPage> {
     service.catalog().then((c) {
       if (mounted) setState(() => _catalog = c);
     });
+    // 配置了更新仓库时，从侧栏的「新版本」进来就直接显示结果
+    if (s.updateRepo.isNotEmpty) {
+      service.checkUpdate().then((u) {
+        if (mounted) setState(() => _update = u);
+      });
+    }
   }
 
   @override
@@ -77,7 +83,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const PageHeader('设置', '方案目录与版本更新'),
+        const PageHeader('设置', '方案目录、版本更新、日志与诊断'),
         AppCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,13 +151,49 @@ class _SettingsPageState extends State<SettingsPage> {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text('发现新版本 ${u.latest}（当前 ${u.current}）。'),
-                        LinkButton('前往下载', onTap: () => openExternal(u.url!)),
+                        // 免安装发布包（对应 TS 版的便携版）不能自动替换，只能去发布页下载
+                        if (u.url != null) LinkButton('前往下载', onTap: () => openExternal(u.url!)),
                       ],
                     ),
                   )
                 else
                   Muted('已是最新版本（${u.current}）', small: true),
               ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CardTitle('日志与诊断'),
+              const Muted(
+                '每次操作的日志都会保存到「文档\\一加工具箱\\logs」，保留 30 天。提交问题反馈时，请导出诊断信息并附上：里面有工具箱版本、'
+                '设备状态（开机时读取与刷机相关的系统属性，Fastboot 下读取 getvar all）和最近两天的日志。序列号会被打码，'
+                '不包含 IMEI、账号等信息。',
+                small: true,
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  AppButton(
+                    label: '导出诊断信息',
+                    icon: Icons.description_outlined,
+                    kind: ButtonKind.primary,
+                    onPressed: widget.tb.run.running
+                        ? null
+                        : () => widget.tb.start('导出诊断信息', const ExportDiagnosticsRequest()),
+                  ),
+                  AppButton(
+                    label: '打开日志文件夹',
+                    icon: Icons.folder_open_outlined,
+                    onPressed: () => openDir(service.logDir),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

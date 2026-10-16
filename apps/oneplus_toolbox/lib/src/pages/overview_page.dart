@@ -7,11 +7,26 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import 'page_id.dart';
 
-class OverviewPage extends StatelessWidget {
+class OverviewPage extends StatefulWidget {
   const OverviewPage({super.key, required this.tb, required this.go});
 
   final ToolboxController tb;
   final Navigate go;
+
+  @override
+  State<OverviewPage> createState() => _OverviewPageState();
+}
+
+class _OverviewPageState extends State<OverviewPage> {
+  /// 「检查驱动」的结果；没查过时为 null
+  List<DriverEntry>? _drivers;
+
+  ToolboxController get tb => widget.tb;
+
+  Future<void> _checkDrivers() async {
+    final r = await tb.start('检查驱动', const DriverCheckRequest());
+    if (mounted) setState(() => _drivers = r.drivers);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,9 +40,13 @@ class OverviewPage extends StatelessWidget {
       ('构建号', d.buildId),
       ('当前槽位', d.slot?.toUpperCase()),
       ('Bootloader', d.unlocked == null ? null : (d.unlocked! ? '已解锁' : '已锁定')),
+      ('Root', d.root),
       ('序列号', d.serial),
     ].where((r) => r.$2 != null && r.$2!.isNotEmpty).toList();
     final connected = d.mode != DeviceMode.none && d.mode != DeviceMode.unauthorized;
+    // 与 TS 版的 `d.brand || d.manufacturer` 一致：品牌读不到时用厂商
+    final brand = (d.brand?.isNotEmpty ?? false) ? d.brand! : (d.manufacturer ?? '');
+    final drivers = _drivers;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,7 +55,7 @@ class OverviewPage extends StatelessWidget {
         if (d.isOnePlus == false)
           Callout(
             Tone.danger,
-            text: '当前设备是 ${d.brand ?? d.manufacturer}，不是一加手机。本工具只在一加手机上验证过，在其它品牌上解锁、Root 或刷写可能导致变砖。',
+            text: '当前设备是 $brand，不是一加手机。本工具只在一加手机上验证过，在其它品牌上解锁、Root 或刷写可能导致变砖。',
           ),
         AppCard(
           padding: const EdgeInsets.all(24),
@@ -68,7 +87,9 @@ class OverviewPage extends StatelessWidget {
                     const SizedBox(height: 10),
                     if (d.mode == DeviceMode.none) const Muted('用数据线连接手机，并在「开发者选项」中打开「USB 调试」。如果一直检测不到，请先安装 USB 驱动。'),
                     if (d.mode == DeviceMode.unauthorized) const Muted('手机上弹出了 USB 调试授权窗口，请勾选「始终允许」并点击「允许」。'),
-                    if (d.multiple) Muted('检测到多台设备，为避免误操作，请只保留一台。', color: c.warn),
+                    if (d.needsPick) Muted('连接了多台设备。为避免误操作，请先在左下角选择要操作的那一台。', color: c.warn),
+                    if (d.mode == DeviceMode.edl && !Features.edl)
+                      const Muted('手机处于 9008 模式。工具箱的 9008 功能暂时停用；退出方法：长按 音量上 + 电源键直到重启。'),
                     if (connected) _Props(rows),
                   ],
                 ),
@@ -94,10 +115,43 @@ class OverviewPage extends StatelessWidget {
                   ),
                 ),
                 AppButton(
+                  label: '检查驱动',
+                  onPressed: tb.run.running ? null : _checkDrivers,
+                ),
+                const SizedBox(width: 8),
+                AppButton(
                   label: '驱动下载',
                   kind: ButtonKind.ghost,
                   onPressed: () => openExternal('https://developer.android.com/studio/run/win-usb'),
                 ),
+              ],
+            ),
+          ),
+        ],
+        if (d.mode == DeviceMode.none && drivers != null && drivers.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const CardTitle('设备管理器里的手机'),
+                for (final x in drivers)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(x.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        Text(
+                          x.problem ?? '驱动正常',
+                          style: TextStyle(fontSize: 12.5, color: x.ok ? c.ok : c.danger),
+                        ),
+                        if (x.hint != null) Muted(x.hint!, small: true),
+                        const SizedBox(height: 3),
+                        Code(x.instanceId),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -110,13 +164,17 @@ class OverviewPage extends StatelessWidget {
           maxColumns: 2,
           gap: 12,
           children: [
-            _Tile(Icons.power_settings_new, '重启与模式', '系统 / Recovery / Fastboot / EDL', () => go(PageId.reboot)),
-            _Tile(Icons.lock_open_outlined, '解锁 Bootloader', 'Root 的前置步骤', () => go(PageId.bootloader)),
-            _Tile(Icons.auto_awesome_outlined, '一键 Root', 'Magisk / APatch / KernelSU 等 6 种方案', () => go(PageId.root)),
-            _Tile(Icons.swap_horiz, 'A/B 槽位切换', '变砖时的自救手段', () => go(PageId.slot)),
-            _Tile(Icons.filter_none, '应用双开', '把任意应用克隆到分身空间', () => go(PageId.apps)),
-            _Tile(Icons.build_outlined, '系统工具', 'Play 商店、禁用系统更新', () => go(PageId.tools)),
-            _Tile(Icons.healing_outlined, '9008 救砖', '高通 EDL 深刷，文件自备', () => go(PageId.edl)),
+            _Tile(Icons.power_settings_new, '重启与模式', '系统 / Recovery / Fastboot${Features.edl ? ' / EDL' : ''}',
+                () => widget.go(PageId.reboot)),
+            _Tile(Icons.lock_open_outlined, '解锁 Bootloader', 'Root 的前置步骤', () => widget.go(PageId.bootloader)),
+            _Tile(Icons.auto_awesome_outlined, '一键 Root', 'Magisk / APatch / KernelSU 等 6 种方案',
+                () => widget.go(PageId.root)),
+            _Tile(Icons.monitor_heart_outlined, '开机诊断', '卡开机时找原因、给修复办法', () => widget.go(PageId.diagnose)),
+            _Tile(Icons.health_and_safety_outlined, '救援与恢复', '卸载 Root、撤销刷写、模块导致卡开机', () => widget.go(PageId.rescue)),
+            _Tile(Icons.swap_horiz, 'A/B 槽位切换', '变砖时的自救手段', () => widget.go(PageId.slot)),
+            if (Features.edl) _Tile(Icons.healing_outlined, '9008 救砖', '高通 EDL 深刷（需自备散包）', () => widget.go(PageId.edl)),
+            _Tile(Icons.content_copy_outlined, '应用管理', '应用双开、卸载预装应用', () => widget.go(PageId.apps)),
+            _Tile(Icons.build_outlined, '系统工具', '安装应用、Play 商店、禁用系统更新', () => widget.go(PageId.tools)),
           ],
         ),
       ],

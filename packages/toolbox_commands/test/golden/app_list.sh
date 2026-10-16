@@ -1,9 +1,9 @@
 A=/data/local/tmp/oneplus-toolbox/aapt2
 chmod 755 $A
 i=0
-for p in $(pm list packages -3 | sed "s/package://"); do
+for e in $(pm list packages -3 -f | sed "s/^package://"); do
+  p=${e##*=}; path=${e%=*}
   (
-    path=$(pm path "$p" | head -n 1 | sed "s/package://")
     b=$($A d badging "$path" 2>/dev/null | grep -E "^application-(label(-zh-CN)?|icon-(160|240|320|480)):")
     l=$(echo "$b" | grep "^application-label-zh-CN:" | head -n 1 | sed "s/^[^:]*:'\(.*\)'$/\1/")
     [ -z "$l" ] && l=$(echo "$b" | grep "^application-label:" | head -n 1 | sed "s/^[^:]*:'\(.*\)'$/\1/")

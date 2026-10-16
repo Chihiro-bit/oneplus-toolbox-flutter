@@ -3,10 +3,12 @@ import 'package:toolbox_service/toolbox_service.dart';
 
 import 'controller.dart';
 import 'pages/apps_page.dart';
+import 'pages/bootdiag_page.dart';
 import 'pages/device_pages.dart';
 import 'pages/edl_page.dart';
 import 'pages/overview_page.dart';
 import 'pages/page_id.dart';
+import 'pages/rescue_page.dart';
 import 'pages/root_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/tools_page.dart';
@@ -102,6 +104,8 @@ class _ShellState extends State<Shell> {
         PageId.reboot => RebootPage(tb: tb),
         PageId.bootloader => BootloaderPage(tb: tb),
         PageId.root => RootPage(tb: tb, form: _rootForm),
+        PageId.diagnose => BootDiagPage(tb: tb),
+        PageId.rescue => RescuePage(tb: tb, go: _go),
         PageId.slot => SlotPage(tb: tb),
         PageId.apps => AppsPage(tb: tb, form: _appsForm),
         PageId.tools => ToolsPage(tb: tb),
@@ -115,7 +119,7 @@ class _ShellState extends State<Shell> {
     return Scaffold(
       body: Row(
         children: [
-          _Sidebar(page: _page, device: tb.device, update: _update, go: _go),
+          _Sidebar(page: _page, device: tb.device, update: _update, go: _go, tb: tb),
           VerticalDivider(width: 1, color: c.border),
           Expanded(
             child: Column(
@@ -153,12 +157,19 @@ class _ShellState extends State<Shell> {
 }
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.page, required this.device, required this.update, required this.go});
+  const _Sidebar({
+    required this.page,
+    required this.device,
+    required this.update,
+    required this.go,
+    required this.tb,
+  });
 
   final PageId page;
   final DeviceInfo device;
   final UpdateInfo? update;
   final Navigate go;
+  final ToolboxController tb;
 
   @override
   Widget build(BuildContext context) {
@@ -185,8 +196,7 @@ class _Sidebar extends StatelessWidget {
               ],
             ),
           ),
-          for (final p in PageId.values.where((p) => p != PageId.settings))
-            _NavItem(p, selected: page == p, onTap: () => go(p)),
+          for (final p in PageId.navigation) _NavItem(p, selected: page == p, onTap: () => go(p)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Divider(height: 1, color: c.border),
@@ -201,7 +211,7 @@ class _Sidebar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(99),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(99),
-                  onTap: () => openExternal(update!.url!),
+                  onTap: () => update!.canAuto ? go(PageId.settings) : openExternal(update!.url!),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                     child: Row(
@@ -215,6 +225,15 @@ class _Sidebar extends StatelessWidget {
                     ),
                   ),
                 ),
+              ),
+            ),
+          if (device.devices.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: DevicePicker(
+                device: device,
+                enabled: !tb.run.running,
+                onSelected: tb.service.selectDevice,
               ),
             ),
           Material(

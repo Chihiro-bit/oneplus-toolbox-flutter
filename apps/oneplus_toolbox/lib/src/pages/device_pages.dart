@@ -6,7 +6,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/dialogs.dart';
 
-const _anyMode = {DeviceMode.system, DeviceMode.recovery, DeviceMode.fastboot};
+const _anyMode = {DeviceMode.system, DeviceMode.recovery, DeviceMode.fastboot, DeviceMode.fastbootd};
 
 /// 操作卡片：图标、标题、说明、按钮
 class _ActionCard extends StatelessWidget {
@@ -45,8 +45,11 @@ class RebootPage extends StatelessWidget {
     (RebootTarget.system, '重启到系统', '正常开机', Icons.restart_alt),
     (RebootTarget.recovery, 'Recovery', '部分机型不支持从 Fastboot 直接进入', Icons.build_outlined),
     (RebootTarget.bootloader, 'Fastboot', '解锁、刷写分区时使用', Icons.bolt_outlined),
-    (RebootTarget.edl, 'EDL / 9008', '高通线刷 / MTK 深刷模式，建议从开机状态进入', Icons.gpp_maybe_outlined),
+    (RebootTarget.fastbootd, 'fastbootd', '用户空间的 Fastboot，取消未合并的系统更新、刷逻辑分区时用', Icons.bolt_outlined),
   ];
+
+  /// 9008 已停用（[Features.edl] 为 false）时，这一项不显示
+  static const _edlItem = (RebootTarget.edl, 'EDL / 9008', '高通线刷 / MTK 深刷模式，建议从开机状态进入', Icons.gpp_maybe_outlined);
 
   Future<void> _run(BuildContext context, RebootTarget target, String title) async {
     if (target == RebootTarget.edl) {
@@ -74,7 +77,7 @@ class RebootPage extends StatelessWidget {
         ResponsiveGrid(
           minItemWidth: 200,
           children: [
-            for (final (target, title, desc, icon) in _items)
+            for (final (target, title, desc, icon) in [..._items, if (Features.edl) _edlItem])
               _ActionCard(
                 icon: icon,
                 title: title,
@@ -136,7 +139,7 @@ class BootloaderPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final g = gate(tb, {DeviceMode.system, DeviceMode.fastboot});
+    final g = gate(tb, {DeviceMode.system, DeviceMode.fastboot, DeviceMode.fastbootd});
     final d = tb.device;
     const steps = [
       '备份手机数据（解锁会清除全部数据，包括内置存储）',
@@ -148,7 +151,7 @@ class BootloaderPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const PageHeader('Bootloader', '解锁是 Root 和刷第三方系统的前提。解锁、上锁都会清空手机全部数据'),
-        if (d.mode == DeviceMode.fastboot && d.unlocked != null)
+        if ((d.mode == DeviceMode.fastboot || d.mode == DeviceMode.fastbootd) && d.unlocked != null)
           Callout(Tone.info, text: '当前 Bootloader 状态：${d.unlocked! ? '已解锁' : '已锁定'}'),
         ResponsiveGrid(
           minItemWidth: 320,

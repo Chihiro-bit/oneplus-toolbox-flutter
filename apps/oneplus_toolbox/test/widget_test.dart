@@ -70,14 +70,18 @@ void main() {
       ('重启与模式', '在开机、Recovery、Fastboot 之间切换'),
       ('Bootloader', '解锁是 Root 和刷第三方系统的前提。解锁、上锁都会清空手机全部数据'),
       ('A/B 槽位', '适用于 A/B 分区机型。刷坏一个槽位后，切换到另一个槽位往往能重新开机'),
-      ('应用双开', '利用 ColorOS / 氧 OS 自带的分身空间（用户 999），把任意第三方应用克隆一份'),
-      ('系统工具', '免 Root 的常用调整，需要手机开机并开启 USB 调试'),
-      ('设置', '方案目录与版本更新'),
+      ('应用管理', '应用双开、冻结不常用的应用、一键授予 adb 权限、备份应用（Root 后可含数据），或者卸载用不到的预装应用'),
+      ('开机诊断', '卡开机、开不了机但还能进 Fastboot 时，根据现象和设备状态推断原因，并给出对应的修复办法'),
+      ('救援与恢复', 'Root 之后卡开机、想卸载 Root，先试这里。大多数情况下不需要用到 9008'),
+      ('系统工具', '安装应用和 Root 模块、投屏截图、文件传输、联网修复等常用调整，需要手机开机并开启 USB 调试'),
+      ('设置', '方案目录、版本更新、日志与诊断'),
     ]) {
       await tester.tap(find.text(nav).first);
       await tester.pump();
       expect(find.text(header), findsOneWidget, reason: nav);
     }
+    // 9008 已停用（Features.edl 为 false）时侧边栏里没有入口
+    expect(find.text('9008 救砖'), findsNothing);
     // 未连接设备时按钮不可用并给出原因
     await tester.tap(find.text('系统工具').first);
     await tester.pump();

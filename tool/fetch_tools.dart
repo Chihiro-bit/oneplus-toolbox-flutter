@@ -94,6 +94,30 @@ const List<Tool> tools = [
     file: null,
   ),
   (
+    // 不带 scrcpy 自己的 adb.exe：启动时用 ADB 环境变量指向工具箱的 adb，避免两个版本的 adb server 互相踢
+    name: 'scrcpy v5.0.1（投屏）',
+    url: 'https://github.com/Genymobile/scrcpy/releases/download/v5.0.1/scrcpy-win64-v5.0.1.zip',
+    sha256: 'b12a2c4ee8be317422451fc7dcf8ee20a71b5ea7ef9ad73ddd825a25316227a5',
+    entries: {
+      for (final f in const [
+        'scrcpy.exe',
+        'scrcpy-server',
+        'SDL3.dll',
+        'avcodec-63.dll',
+        'avformat-63.dll',
+        'avutil-61.dll',
+        'swresample-7.dll',
+        'libusb-1.0.dll',
+        'scrcpy.png',
+        'disconnected.png',
+        'LICENSE.txt',
+      ])
+        'scrcpy-win64-v5.0.1/$f': 'scrcpy/$f',
+    },
+    tarGz: false,
+    file: null,
+  ),
+  (
     // qdl 的发布包里没有许可证文件，按 BSD-3-Clause 的要求单独随附
     name: 'qdl LICENSE（BSD-3-Clause）',
     url: 'https://raw.githubusercontent.com/linux-msm/qdl/v2.8/LICENSE',

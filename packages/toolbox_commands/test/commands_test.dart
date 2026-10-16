@@ -7,13 +7,31 @@ import 'package:toolbox_core/toolbox_core.dart';
 /// golden/ 下的文件由 TS 版生成，保证两个版本发到手机上的脚本完全一致
 String golden(String name) => File('test/golden/$name').readAsStringSync();
 
+/// ColorOS / 氧 OS 的分身空间固定是用户 999
+const cloneUser = '999';
+
 void main() {
   group('手机端脚本与 TS 版一致', () {
     test('magisk', () => expect(patchScript(RootFamily.magisk, 'init_boot.img'), golden('patch_magisk.sh')));
     test('apatch',
         () => expect(patchScript(RootFamily.apatch, 'boot.img', superkey: 'abc123XY'), golden('patch_apatch.sh')));
     test('ksu', () => expect(patchScript(RootFamily.ksu, 'init_boot.img'), golden('patch_ksu.sh')));
-    test('应用列表', () => expect(appListScript('$remoteDir/aapt2', '999'), golden('app_list.sh')));
+    test(
+        '应用列表（第三方，标出已双开）',
+        () => expect(
+            appListScript('pm list packages -3 -f', listClonedPackagesScript(cloneUser)), golden('app_list.sh')));
+    test(
+        '预装应用列表（标出已卸载 / 已停用）',
+        () => expect(
+            appListScript('pm list packages -s -u -f', [
+              ...listInstalledSystemPackagesScript(),
+              ...listDisabledSystemPackagesScript(),
+            ]),
+            golden('app_list_system.sh')));
+    test(
+        '冻结与权限的应用列表（标出已冻结）',
+        () => expect(appListScript('pm list packages -3 -f', listDisabledUserPackagesScript()),
+            golden('app_list_user_frozen.sh')));
   });
 
   test('shq 转义单引号', () {
@@ -51,10 +69,56 @@ void main() {
         'APP|com.b|/data/app/b/base.apk||\n'
         'CLONED|com.a\n');
     expect(l.apps.first.label, '微信|x');
+    expect(l.apps.first.apkPath, '/data/app/a/base.apk');
     expect(l.apps.first.iconPath, 'res/icon.png');
     expect(l.apps.last.label, 'com.b');
     expect(l.apps.last.iconPath, isNull);
-    expect(l.clonedPackages, {'com.a'});
+    expect(l.mark(clonedMark), {'com.a'});
+    expect(l.mark(installedMark), isEmpty);
+  });
+
+  test('componentPackage / resolvedActivityPackage', () {
+    expect(componentPackage('com.baidu.input/.ImeService\n'), 'com.baidu.input');
+    expect(componentPackage('null\n'), isNull);
+    expect(componentPackage(''), isNull);
+    expect(
+        resolvedActivityPackage('priority=0 preferredOrder=0\n'
+            'com.android.launcher/.Launcher\n'),
+        'com.android.launcher');
+    expect(resolvedActivityPackage(''), isNull);
+  });
+
+  group('应用数据脚本', () {
+    test('打包脚本与 TS 版一致', () {
+      expect(
+        dataBackupScript(root: '/data/data', pkg: 'com.example.app', remote: '$remoteDir/data.tgz'),
+        '[ -d /data/data/com.example.app ] || { echo NO_DIR; exit 0; }; '
+        'cd /data/data && tar -czf $remoteDir/data.tgz '
+        '--exclude=com.example.app/cache --exclude=com.example.app/code_cache --exclude=com.example.app/lib '
+        'com.example.app && chmod 644 $remoteDir/data.tgz && echo TAR_OK',
+      );
+    });
+
+    test('解包脚本与 TS 版一致', () {
+      expect(
+        dataRestoreScript(root: '/data/data', pkg: 'com.example.app', remote: '$remoteDir/data.tgz'),
+        '[ -d /data/data/com.example.app ] || { echo NO_DIR; exit 0; }\n'
+        'U=\$(stat -c %u /data/data/com.example.app)\n'
+        'find /data/data/com.example.app -mindepth 1 -maxdepth 1 ! -name cache ! -name code_cache ! -name lib -exec rm -rf {} +\n'
+        'tar -xzf $remoteDir/data.tgz -C /data/data || exit 1\n'
+        'chown -R \$U:\$U /data/data/com.example.app\n'
+        'restorecon -RF /data/data/com.example.app\n'
+        'echo RESTORE_OK',
+      );
+    });
+
+    test('checkArchive 只接受该应用目录下的条目', () {
+      expect(checkArchive('com.a/\ncom.a/shared_prefs/x.xml\n', 'com.a'), isTrue);
+      expect(checkArchive('com.a\n', 'com.a'), isTrue);
+      expect(checkArchive('com.b/x\n', 'com.a'), isFalse);
+      expect(checkArchive('com.a/../com.b/x\n', 'com.a'), isFalse);
+      expect(checkArchive('', 'com.a'), isFalse);
+    });
   });
 
   test('SevenZip.listContains', () {

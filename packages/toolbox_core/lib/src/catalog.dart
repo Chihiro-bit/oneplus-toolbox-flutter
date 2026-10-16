@@ -91,6 +91,33 @@ const builtinCatalog = Catalog(
   ],
 );
 
+/// 系统工具里一键安装 / 启动的 Shizuku
+class ShizukuRelease {
+  const ShizukuRelease({
+    required this.package,
+    required this.version,
+    required this.url,
+    required this.sha256,
+    required this.homepage,
+  });
+
+  final String package;
+  final String version;
+  final String url;
+
+  /// GitHub 没有公布资产摘要，sha256 是从 Releases 下载后计算的
+  final String sha256;
+  final String homepage;
+}
+
+const shizuku = ShizukuRelease(
+  package: 'moe.shizuku.privileged.api',
+  version: '13.6.0',
+  url: 'https://github.com/RikkaApps/Shizuku/releases/download/v13.6.0/shizuku-v13.6.0.r1086.2650830c-release.apk',
+  sha256: '6e273ab0e991c4e79bc8b1bbb9b9dd739ccac1a8712a541a214078886b7b790f',
+  homepage: 'https://github.com/RikkaApps/Shizuku',
+);
+
 /// 已知的 Root 管理器包名，切换方案时用于卸载旧管理器
 const knownManagers = [
   'com.topjohnwu.magisk',

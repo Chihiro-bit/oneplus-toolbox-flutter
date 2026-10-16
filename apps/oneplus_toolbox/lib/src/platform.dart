@@ -41,6 +41,12 @@ Future<List<String>> pickFiles(List<String> extensions) async {
   return [for (final f in files) f.path];
 }
 
+/// 选择要发送到手机的文件（不确定类型，不过滤）
+Future<List<String>> pickAnyFiles() async {
+  final files = await openFiles(confirmButtonText: '选择');
+  return [for (final f in files) f.path];
+}
+
 /// 选目录，取消返回 null
 Future<String?> pickDir() => getDirectoryPath(confirmButtonText: '选择');
 
@@ -57,5 +63,16 @@ Future<void> showInFolder(String path) async {
     await Process.start('explorer.exe', ['/select,', path]);
   } else {
     await launchUrl(Uri.file(File(path).parent.path));
+  }
+}
+
+/// 在资源管理器中打开目录（对应 TS 版的 shell.openPath）
+Future<void> openDir(String path) async {
+  final dir = Directory(path);
+  if (!dir.existsSync()) dir.createSync(recursive: true);
+  if (Platform.isWindows) {
+    await Process.start('explorer.exe', [path]);
+  } else {
+    await launchUrl(Uri.file(path));
   }
 }

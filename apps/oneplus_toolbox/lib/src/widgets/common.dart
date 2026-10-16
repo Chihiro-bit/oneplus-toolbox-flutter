@@ -22,11 +22,63 @@ Gate gate(ToolboxController tb, Set<DeviceMode> allowed) {
   final d = tb.device;
   if (tb.run.running) return const Gate('有操作正在进行');
   if (d.mode == DeviceMode.none) return const Gate('未连接设备');
-  if (d.multiple) return const Gate('请只连接一台设备');
+  // 连着多台但没选中当前这台时一律拒绝，避免刷错手机
+  if (d.needsPick) return const Gate('连接了多台设备，请先在左下角选择要操作的那一台');
   if (!allowed.contains(d.mode)) {
     return Gate('需要在 ${allowed.map((m) => m.label).join(' / ')} 模式下使用');
   }
   return const Gate(null);
+}
+
+// ───────────── 左下角的多设备选择框 ─────────────
+
+/// 连着多台设备时，先在这里选定要操作的那一台（对应 TS 版 App.tsx 的 device-picker）
+class DevicePicker extends StatelessWidget {
+  const DevicePicker({super.key, required this.device, required this.onSelected, this.enabled = true});
+
+  final DeviceInfo device;
+
+  /// 选中设备的序列号，接到 ToolboxService.selectDevice()
+  final ValueChanged<String?> onSelected;
+
+  /// 有操作进行中时不允许切换（对应 TS 版的 disabled={tb.run.running}）
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.palette;
+    if (device.devices.isEmpty) return const SizedBox.shrink();
+    final selected = device.selected;
+    // 选中的设备可能不在线（例如正卡在开机），列表里补一项占位，否则下拉框的 value 找不到对应项
+    final offline = selected != null && !device.devices.any((x) => x.serial == selected);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: 6),
+          child: Text('连接了 ${device.devices.length} 台设备，操作哪一台？', style: TextStyle(fontSize: 12.5, color: c.muted)),
+        ),
+        DropdownButtonFormField<String?>(
+          value: selected,
+          isDense: true,
+          isExpanded: true,
+          style: TextStyle(fontSize: 13, color: c.text),
+          onChanged: enabled ? onSelected : null,
+          items: [
+            if (selected == null) const DropdownMenuItem<String?>(value: null, child: Text('请选择…')),
+            if (offline)
+              DropdownMenuItem<String?>(
+                  value: selected, child: Text('$selected（不在线）', overflow: TextOverflow.ellipsis)),
+            for (final x in device.devices)
+              DropdownMenuItem<String?>(
+                value: x.serial,
+                child: Text('${x.label ?? x.serial} · ${x.mode.label}', overflow: TextOverflow.ellipsis),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 // ───────────── 页面骨架 ─────────────
@@ -131,7 +183,7 @@ class ModeBadge extends StatelessWidget {
     final c = context.palette;
     final (fg, bg) = switch (mode) {
       DeviceMode.system => (c.ok, c.okSoft),
-      DeviceMode.fastboot => (c.info, c.infoSoft),
+      DeviceMode.fastboot || DeviceMode.fastbootd => (c.info, c.infoSoft),
       DeviceMode.recovery || DeviceMode.unauthorized => (c.warn, c.warnSoft),
       DeviceMode.edl => (c.danger, c.dangerSoft),
       DeviceMode.none => (c.muted, c.surface2),

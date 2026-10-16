@@ -67,8 +67,7 @@ class Qdl {
   LogSink? get _log {
     final sink = log;
     if (sink == null) return null;
-    return (level, text) =>
-        sink(level == LogLevel.info && _errorWords.hasMatch(text) ? LogLevel.error : level, text);
+    return (level, text) => sink(level == LogLevel.info && _errorWords.hasMatch(text) ? LogLevel.error : level, text);
   }
 
   Future<ExecResult> run(List<String> args, {required Duration timeout}) =>

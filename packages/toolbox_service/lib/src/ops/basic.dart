@@ -10,13 +10,14 @@ Future<OperationResult> reboot(RebootTarget target, OpContext ctx) async {
   final name = target.label;
   ctx.step('正在重启到$name');
 
-  if (d.mode == DeviceMode.fastboot) {
+  if (d.mode == DeviceMode.fastboot || d.mode == DeviceMode.fastbootd) {
     final r = await ctx.fastboot.reboot(
         serial,
         switch (target) {
           RebootTarget.system => null,
           RebootTarget.recovery => 'recovery',
           RebootTarget.bootloader => 'bootloader',
+          RebootTarget.fastbootd => 'fastboot',
           RebootTarget.edl => 'emergency',
         });
     if (target == RebootTarget.edl) ctx.log(LogLevel.warn, '大部分机型不支持从 Fastboot 进入 EDL，建议在开机状态使用');
@@ -32,6 +33,7 @@ Future<OperationResult> reboot(RebootTarget target, OpContext ctx) async {
         RebootTarget.system => null,
         RebootTarget.recovery => 'recovery',
         RebootTarget.bootloader => 'bootloader',
+        RebootTarget.fastbootd => 'fastboot',
         RebootTarget.edl => 'edl',
       });
   final tip = target == RebootTarget.edl ? '。退出 EDL：长按 音量上 + 电源键（老机型长按电源键）' : '';
@@ -40,7 +42,34 @@ Future<OperationResult> reboot(RebootTarget target, OpContext ctx) async {
 
 // ───────────── 解锁 / 上锁 Bootloader ─────────────
 
+/// 上锁前确认系统没被改过：镜像被修补过时上锁，手机会因为校验失败起不来，而上锁后又不能再刷写，只能售后。
+/// 能查的有两处：开机时的 Root 状态，以及工具箱自己的刷写记录（最后一次是 Root 且没撤销）。
+Future<void> _checkStockBeforeLock(OpContext ctx) async {
+  final d = await ctx.requireDevice();
+  final serial = d.serial!;
+  if (d.mode == DeviceMode.system) {
+    final root = await ctx.probe.rootStatus(serial, ctx.cancel);
+    if (isRooted(root)) {
+      throw OpException('手机当前是 $root，镜像被修改过，上锁后会无法开机。请先在「救援与恢复」里刷回原厂镜像再上锁');
+    }
+  }
+  final last = ctx.history.lastFlash(serial);
+  if (last != null && last.kind == FlashKind.root && !last.undone) {
+    throw OpException('工具箱记录到这台手机最后一次刷写是 Root（${last.scheme ?? ''}，${_date(last.time)}），之后没有刷回原厂。请先刷回原厂镜像再上锁');
+  }
+}
+
+/// 与 TS 版 `new Date(t).toLocaleDateString('zh-CN')` 一致，形如 2026/10/15
+String _date(int millis) {
+  final t = DateTime.fromMillisecondsSinceEpoch(millis);
+  return '${t.year}/${t.month}/${t.day}';
+}
+
 Future<OperationResult> setLock(OpContext ctx, {required bool unlock}) async {
+  if (!unlock) {
+    ctx.step('正在检查系统是否为原厂状态');
+    await _checkStockBeforeLock(ctx);
+  }
   final serial = await ctx.ensureFastboot();
   ctx.step('正在检测当前锁定状态');
   final state = await ctx.fastboot.isUnlocked(serial);

@@ -59,6 +59,44 @@ const apps = [
   AppEntry(package: 'com.example.bank', label: '银行', cloned: false),
 ];
 
+/// 模拟数据里的「现在」，对应 TS 版 mock.js 里的 `const now = Date.now()`
+final _now = DateTime.now().millisecondsSinceEpoch;
+
+/// 开机诊断场景采集到的状态：照搬 TS 版 mock.js 里 `scene === 'diagnose'` 的那份数据
+/// （Root 后卡开机：A 槽不可启动、B 槽还能用，一加 13 实测的槽位格式）
+const mockBootState = BootState(
+  mode: DeviceMode.fastboot,
+  serial: '1a2b3c4d',
+  currentSlot: 'a',
+  slots: {
+    'a': SlotState(successful: false, unbootable: true, retryCount: 0),
+    'b': SlotState(successful: true, unbootable: false, retryCount: 7),
+  },
+  unlocked: true,
+  criticalUnlocked: false,
+  snapshotStatus: 'none',
+);
+
+/// 刷写记录：照搬 TS 版 mock.js 的 HISTORY（40 分钟前刷入 Magisk 修补的 init_boot，带原厂备份）。
+/// 救援页顶部的「撤销上一次刷写」卡片和诊断页的「最后做了什么」都靠它。
+final mockHistory = [
+  FlashRecord(
+    id: 'h1',
+    // TS 版用 `now - 40 * 60_000`；这里在加载时取一次，和那行等价
+    time: _now - 40 * 60 * 1000,
+    serial: '1a2b3c4d',
+    kind: FlashKind.root,
+    scheme: 'Magisk',
+    slot: 'a',
+    build: const FlashBuild(buildId: 'PJZ110_16.0.0.300(CN01)', buildDateUtc: '1785725462'),
+    partitions: const [FlashPartition(name: 'init_boot', source: FlashSource.patched, sha256: 'x')],
+    backups: const {
+      'init_boot': FlashBackup(path: r'C:\Users\me\Documents\一加工具箱\backups\init_boot.img', sha256: 'y'),
+    },
+    status: FlashStatus.ok,
+  ),
+];
+
 const rootLogs = [
   (LogLevel.step, '── 开始：Root（magisk） ──'),
   (LogLevel.ok, 'Magisk 30.7 下载完成，sha256 校验通过'),
@@ -100,6 +138,17 @@ class MockService implements ToolboxService {
   @override
   bool get busy => false;
 
+  /// 截图脚本不会真的开投屏窗口
+  @override
+  bool get mirrorRunning => false;
+
+  @override
+  Future<OperationResult> startMirror(MirrorOptions options) async =>
+      const OperationResult(ok: true, message: '投屏窗口正在打开');
+
+  @override
+  void stopMirror() {}
+
   @override
   void start() {
     final now = DateTime(2026, 10, 15, 14, 30);
@@ -113,6 +162,12 @@ class MockService implements ToolboxService {
   Future<OperationResult> run(OperationRequest req) async {
     switch (req) {
       case ListAppsRequest():
+        scheduleMicrotask(() => _icons.add(icons));
+        return const OperationResult(ok: true, message: '共 9 个应用，其中 2 个已双开', apps: apps);
+      case ListSystemAppsRequest():
+        scheduleMicrotask(() => _icons.add(icons));
+        return const OperationResult(ok: true, message: '共 9 个应用，其中 2 个已双开', apps: apps);
+      case ListUserAppsRequest():
         scheduleMicrotask(() => _icons.add(icons));
         return const OperationResult(ok: true, message: '共 9 个应用，其中 2 个已双开', apps: apps);
       case EdlDetectRequest():
@@ -133,6 +188,9 @@ class MockService implements ToolboxService {
                 'rawprogram0.xml patch0.xml',
           ),
         );
+      // 开机诊断：返回带 bootState 的结果，页面据此渲染结论卡片和槽位表格
+      case BootCollectRequest():
+        return const OperationResult(ok: true, message: '已读取 Fastboot 下的设备状态', bootState: mockBootState);
       default:
         scheduleMicrotask(() => _steps.add('正在手机上修补 init_boot.img'));
         return Completer<OperationResult>().future;
@@ -141,6 +199,25 @@ class MockService implements ToolboxService {
 
   @override
   void cancel() {}
+
+  // ───────────── 刷写记录与日志 ─────────────
+
+  @override
+  List<FlashRecord> history(String serial) => mockHistory;
+
+  /// 和 core 的 `undoableFlash()` 一样：没被撤销过、带原厂备份的最近一次刷写才算能撤销
+  @override
+  FlashRecord? undoableFlash(String serial) {
+    if (mockHistory.isEmpty) return null;
+    final last = mockHistory.last;
+    return !last.undone && last.kind != FlashKind.undo && last.backups.isNotEmpty ? last : null;
+  }
+
+  @override
+  String get logDir => r'C:\Users\me\Documents\一加工具箱\logs';
+
+  @override
+  void selectDevice(String? serial) {}
 
   @override
   Future<CatalogState> catalog({bool refresh = false}) async =>

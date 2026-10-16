@@ -29,8 +29,7 @@ Future<List<EdlDevice>> _requireSingleEdl(OpContext ctx) async {
   ctx.step('正在查找 9008 设备');
   final ports = await listEdlDevices(ctx.cancel);
   if (ports.isEmpty) {
-    throw const OpException(
-        '没有检测到 9008 设备。请依次确认：①已安装高通 9008（QDLoader）驱动；②手机确实进入了 EDL 模式；③数据线支持数据传输');
+    throw const OpException('没有检测到 9008 设备。请依次确认：①已安装高通 9008（QDLoader）驱动；②手机确实进入了 EDL 模式；③数据线支持数据传输');
   }
   if (ports.length > 1) throw OpException('检测到 ${ports.length} 个 9008 设备，请只连接一台');
   ctx.log(LogLevel.ok, '已找到 ${ports.first.port.isNotEmpty ? ports.first.port : '9008 设备'}（${ports.first.name}）');
@@ -149,8 +148,7 @@ Future<OperationResult> edlProbe(EdlProfile profile, OpContext ctx) async {
     ctx.log(LogLevel.error, chip.all.trim().isEmpty ? 'qdl chipinfo 失败' : chip.all.trim());
     return OperationResult(
       ok: false,
-      message:
-          'Sahara 通信失败。请先确认 9008 驱动、数据线和端口都正常；如果这台机器已经更新过带熔断的版本（例如一加 13 的 16.0.3.501 及以后），免授权 EDL 已经不可用',
+      message: 'Sahara 通信失败。请先确认 9008 驱动、数据线和端口都正常；如果这台机器已经更新过带熔断的版本（例如一加 13 的 16.0.3.501 及以后），免授权 EDL 已经不可用',
       edl: state,
     );
   }

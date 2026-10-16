@@ -45,20 +45,22 @@ String patchedFileName(String schemeName, Partition partition, String device, Da
 
 // ───────────── 工作目录 ─────────────
 
-String _workDir(ToolboxEnvironment env) {
+/// 每次操作前重建的临时工作目录（对应 TS 版 ops/root.ts 的 workDir()，各 op 共用一份）
+String workDir(ToolboxEnvironment env) {
   final dir = Directory(p.join(env.tempDir, 'oneplus-toolbox', 'work'));
   if (dir.existsSync()) dir.deleteSync(recursive: true);
   dir.createSync(recursive: true);
   return dir.path;
 }
 
-String _outputDir(ToolboxEnvironment env) {
+/// 「文档\一加工具箱」：修补后的镜像、截图、备份都放在这里
+String outputDir(ToolboxEnvironment env) {
   final dir = Directory(p.join(env.documentsDir, '一加工具箱'))..createSync(recursive: true);
   return dir.path;
 }
 
 /// 在目录中递归查找指定文件名（跳过空文件）
-String? _findFile(String dir, String name) {
+String? findFile(String dir, String name) {
   for (final e in Directory(dir).listSync(recursive: true)) {
     if (e is File && p.basename(e.path) == name && e.lengthSync() > 0) return e.path;
   }
@@ -198,9 +200,9 @@ Future<OperationResult> root(
   }
   ctx.log(LogLevel.ok, 'Root 方案：${scheme.name}（${scheme.family.label}）');
 
-  final dir = _workDir(env);
+  final dir = workDir(env);
   await _extractImages(opts.rom.trim(), props['ro.build.date.utc'], dir, ctx);
-  final images = {for (final part in Partition.values) part: _findFile(dir, part.image)};
+  final images = {for (final part in Partition.values) part: findFile(dir, part.image)};
   ctx.log(LogLevel.info,
       '提取结果：boot.img ${images[Partition.boot] != null ? '✓' : '✗'}  init_boot.img ${images[Partition.initBoot] != null ? '✓' : '✗'}');
 
@@ -231,7 +233,7 @@ Future<OperationResult> root(
   if (!patchedFile.existsSync() || patchedFile.lengthSync() == 0) throw const OpException('从手机取回修补后的镜像失败');
 
   final saved = p.join(
-    _outputDir(env),
+    outputDir(env),
     patchedFileName(scheme.name, partition, props['ro.product.device'] ?? 'device', DateTime.now()),
   );
   patchedFile.copySync(saved);

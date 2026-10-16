@@ -5,12 +5,22 @@
 library;
 
 export 'src/adb.dart';
+export 'src/app_data.dart';
 export 'src/app_list.dart';
+export 'src/apps_script.dart';
+export 'src/backup_script.dart';
 export 'src/download.dart';
+export 'src/drivers_script.dart';
 export 'src/exec.dart';
 export 'src/fastboot.dart';
+export 'src/install_split.dart';
+export 'src/media_script.dart';
+export 'src/module_install.dart';
+export 'src/network_script.dart';
 export 'src/patch_script.dart';
 export 'src/payload_dumper.dart';
 export 'src/qdl.dart';
+export 'src/rescue_script.dart';
 export 'src/seven_zip.dart';
+export 'src/shizuku_script.dart';
 export 'src/tool_paths.dart';

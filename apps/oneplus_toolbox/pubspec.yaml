@@ -11,6 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # 从资源管理器拖文件进窗口（安装应用、安装模块、发送文件）
+  desktop_drop: ^0.5.0
   file_selector: ^1.0.3
   path: ^1.9.0
   path_provider: ^2.1.3

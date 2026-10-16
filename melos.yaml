@@ -5,13 +5,15 @@ name: oneplus_toolbox_workspace
 #   apps/oneplus_toolbox        UI：页面、组件、交互状态
 #        │
 #        ▼
-#   packages/toolbox_service    业务：设备监测、Root / 解锁 / 槽位 / 双开 / 9008 流程、目录、设置、更新
+#   packages/toolbox_service    业务：设备识别（多设备选择、fastbootd 区分）、解锁 / Root / 救援与恢复、
+#                               开机诊断、应用管理、投屏与文件传输、系统工具、方案目录、设置、更新检查
+#                               （对外只暴露 ToolboxService 一个入口）
 #        │
 #        ▼
-#   packages/toolbox_commands   命令：adb / fastboot / payload_dumper / 7-Zip / qdl / 校验下载 / 手机端脚本
+#   packages/toolbox_commands   命令：adb / fastboot / payload_dumper / 7-Zip / qdl / scrcpy、校验下载、手机端脚本
 #        │
 #        ▼
-#   packages/toolbox_core       共享模型、内置方案目录、校验规则、取消令牌（纯 Dart，无 IO）
+#   packages/toolbox_core       共享模型、内置方案目录、开机诊断规则、校验规则、功能开关、取消令牌（纯 Dart，无 IO）
 packages:
   - apps/**
   - packages/**

@@ -19,6 +19,9 @@ class ToolPaths {
   /// Android 端的 aapt2，推到手机上读取应用名
   String get aapt2 => p.join(binDir, 'aapt2');
 
+  /// 投屏，随附的 DLL 和 scrcpy-server 必须与它同目录
+  String get scrcpy => p.join(binDir, 'scrcpy', 'scrcpy.exe');
+
   /// 高通 9008 / EDL 刷写工具，随附的 DLL 必须与它同目录
   String get qdl => p.join(binDir, 'qdl', 'qdl.exe');
 
@@ -29,6 +32,7 @@ class ToolPaths {
         'payloadDumper': payloadDumper,
         'magiskApk': magiskApk,
         'aapt2': aapt2,
+        'scrcpy': scrcpy,
         'qdl': qdl,
       };
 

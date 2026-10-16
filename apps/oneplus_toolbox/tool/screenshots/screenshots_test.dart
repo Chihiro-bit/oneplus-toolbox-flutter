@@ -79,29 +79,36 @@ final scenes = <Scene>[
     logs: false,
     act: (t) => _tap(t, find.text('开始解锁')),
   ),
+  // 救援与恢复：顶部「撤销上一次刷写」卡片靠 mock 的刷写记录显示成可用状态
   (
-    file: 'edl',
-    device: 'edl',
-    page: '9008 救砖',
+    file: 'rescue',
+    device: 'system',
+    page: '救援与恢复',
+    dark: false,
+    logs: false,
+    act: (t) async => _scrollTo(t, 0),
+  ),
+  // 开机诊断：勾上「CrashDump」现象、读一次设备状态，然后滚到诊断结果
+  (
+    file: 'diagnose',
+    device: 'fastboot',
+    page: '开机诊断',
     dark: false,
     logs: false,
     act: (t) async {
-      await _tap(t, find.text('检测设备'));
-      for (var i = 0; i < 3; i++) {
-        await _tap(t, find.text('浏览…').at(i));
-      }
-      await _tap(t, find.text('选择 XML'));
-      await _tap(t, find.text('预检'));
-      _scrollTo(t, 175);
+      await _tap(t, find.textContaining('CrashDump'));
+      await _tap(t, find.text('读取状态并诊断'));
+      _scrollCardToTop(t, find.text('3. 诊断结果'));
     },
   ),
   (
     file: 'apps',
     device: 'system',
-    page: '应用双开',
+    page: '应用管理',
     dark: false,
     logs: false,
     act: (t) async {
+      // 侧边栏进的是「应用管理」，首个标签页就是「应用双开」
       await _tap(t, find.text('读取应用列表'));
       // 图片解码在真实的异步环境里完成
       await t.runAsync(() async {
@@ -134,6 +141,16 @@ Future<void> _tap(WidgetTester t, Finder finder) async {
 
 /// 主内容区滚动到指定位置（超出范围时取最大值）
 void _scrollTo(WidgetTester t, double offset) {
+  final scrollable = find.descendant(of: find.byType(SingleChildScrollView).first, matching: find.byType(Scrollable));
+  final pos = t.state<ScrollableState>(scrollable.first).position;
+  pos.jumpTo(offset.clamp(0, pos.maxScrollExtent));
+}
+
+/// 把某个组件滚到主内容区顶部（对应 TS 版截图脚本里的 scrollIntoView({ block: 'start' })）
+void _scrollCardToTop(WidgetTester t, Finder finder) {
+  final target = t.renderObject<RenderObject>(finder.first);
+  final viewport = RenderAbstractViewport.of(target);
+  final offset = viewport.getOffsetToReveal(target, 0).offset;
   final scrollable = find.descendant(of: find.byType(SingleChildScrollView).first, matching: find.byType(Scrollable));
   final pos = t.state<ScrollableState>(scrollable.first).position;
   pos.jumpTo(offset.clamp(0, pos.maxScrollExtent));
