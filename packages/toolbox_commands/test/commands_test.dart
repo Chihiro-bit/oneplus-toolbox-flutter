@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 import 'package:toolbox_commands/toolbox_commands.dart';
 import 'package:toolbox_core/toolbox_core.dart';
@@ -126,6 +127,73 @@ void main() {
         '2024-01-01 00:00:00 ....A     100   50  vendor_boot.img\r\n';
     expect(SevenZip.listContains(listing, 'boot.img'), isTrue);
     expect(SevenZip.listContains(listing, 'init_boot.img'), isFalse);
+  });
+
+  group('AAB', () {
+    test('parseJavaMajor', () {
+      expect(parseJavaMajor('openjdk version "17.0.20.1" 2026-01-01'), 17);
+      expect(parseJavaMajor('java version "1.8.0_402"'), 8);
+      expect(parseJavaMajor('乱七八糟'), isNull);
+    });
+
+    test('bundletoolArgs 只按当前手机生成分包', () {
+      expect(
+        bundletoolArgs(
+          bundletool: r'C:\bin\bundletool.jar',
+          bundle: r'C:\a.aab',
+          out: r'C:\out',
+          serial: 'abc123',
+          adb: r'C:\bin\adb.exe',
+        ),
+        [
+          '-jar',
+          r'C:\bin\bundletool.jar',
+          'build-apks',
+          r'--bundle=C:\a.aab',
+          r'--output=C:\out',
+          '--output-format=directory',
+          '--connected-device',
+          '--device-id=abc123',
+          r'--adb=C:\bin\adb.exe',
+        ],
+      );
+    });
+
+    test('没有调试密钥时用内置密钥签名', () {
+      expect(
+        bundletoolArgs(
+          bundletool: 'b.jar',
+          bundle: 'a.aab',
+          out: 'out',
+          serial: 'abc',
+          adb: 'adb.exe',
+          keystore: r'C:\debug.keystore',
+        ),
+        containsAllInOrder([
+          r'--ks=C:\debug.keystore',
+          '--ks-key-alias=androiddebugkey',
+          '--ks-pass=pass:android',
+          '--key-pass=pass:android',
+        ]),
+      );
+    });
+
+    test('优先使用随安装包的精简 JRE', () {
+      final tmp = Directory.systemTemp.createTempSync('toolbox_aab_test');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final java = File(p.join(tmp.path, 'jre', 'bin', 'java.exe'))..createSync(recursive: true);
+      expect(findJava(ToolPaths(tmp.path), environment: const {}), java.path);
+    });
+
+    test('查找调试密钥', () {
+      final tmp = Directory.systemTemp.createTempSync('toolbox_keystore_test');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      expect(hasDebugKeystore(environment: {'USERPROFILE': tmp.path}), isFalse);
+      File(p.join(tmp.path, '.android', 'debug.keystore')).createSync(recursive: true);
+      expect(hasDebugKeystore(environment: {'USERPROFILE': tmp.path}), isTrue);
+    });
+
+    test('安装格式包含 AAB', () => expect(installExtensions, contains('aab')));
   });
 
   group('exec', () {

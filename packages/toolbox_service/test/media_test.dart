@@ -44,6 +44,16 @@ void main() {
     test('镜像手机屏幕：只保持亮屏', () {
       expect(mirrorArgs(const MirrorOptions(stayAwake: true), 'PJZ110'), ['--window-title', 'PJZ110', '--stay-awake']);
     });
+    test('置顶对镜像和独立屏幕都生效', () {
+      expect(
+        mirrorArgs(const MirrorOptions(alwaysOnTop: true), 'PJZ110'),
+        ['--window-title', 'PJZ110', '--always-on-top'],
+      );
+      expect(
+        mirrorArgs(const MirrorOptions(alwaysOnTop: true, display: MirrorDisplayOptions()), 'PJZ110'),
+        contains('--always-on-top'),
+      );
+    });
     test('独立屏幕：指定应用和分辨率，不保持亮屏', () {
       final args = mirrorArgs(
         const MirrorOptions(

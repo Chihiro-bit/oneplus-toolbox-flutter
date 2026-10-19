@@ -8,7 +8,7 @@ import 'package:path/path.dart' as p;
 /// 对应 TS 版 src/main/ops/install.ts 里与文件有关的部分。
 
 /// 可以安装的包格式
-const installExtensions = ['apk', 'apks', 'xapk'];
+const installExtensions = ['apk', 'apks', 'xapk', 'aab'];
 
 /// 文件名后缀能不能装（界面用它决定要不要接受拖进来的文件）
 bool isInstallable(String path) => installExtensions.contains(p.extension(path).replaceFirst('.', '').toLowerCase());

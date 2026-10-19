@@ -4,7 +4,7 @@
 
 ## 随安装包分发
 
-以下文件位于程序目录的 `bin` 下，构建前由 `tool/fetch_tools.dart`（`melos run fetch-tools`）从官方地址下载并校验 sha256。
+以下文件位于程序目录的 `bin` 下，构建前由 `tool/fetch_tools.dart`（`melos run fetch-tools`）从官方地址下载并校验 sha256；其中精简 JRE 由构建机的 JDK 通过 `jlink` 生成。
 
 | 组件 | 版本 | 用途 | 许可证 | 源码 / 来源 |
 |---|---|---|---|---|
@@ -13,6 +13,8 @@
 | 7-Zip（7za.exe，经由 npm 包 7zip-bin） | 21.07 | 从线刷包中提取镜像 | GNU LGPL-2.1（含 unRAR 限制条款） | <https://www.7-zip.org/>、<https://github.com/develar/7zip-bin> |
 | aapt2（Android arm64 构建） | ReVanced/aapt2 v1.1.0 | 推送到手机上读取应用名称和图标 | AOSP 源码为 Apache-2.0；构建脚本为 GPL-3.0 | <https://github.com/ReVanced/aapt2>、<https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/tools/aapt2/> |
 | qdl（qdl.exe 及其自带的 libusb / libxml2 / libzip 等运行库 DLL） | 2.8 | 与处于 9008（EDL）模式的设备通信、刷写分区 | BSD-3-Clause，许可证全文随附在 `qdl/LICENSE` | <https://github.com/linux-msm/qdl> |
+| bundletool（bundletool.jar） | 1.18.3 | 把 AAB 按手机配置转换成分包 APK | Apache-2.0 | <https://github.com/google/bundletool> |
+| OpenJDK 精简运行时（`jre`，由构建机的 `jlink` 生成） | 构建所用 JDK（当前 17） | 运行 bundletool | GPL-2.0 with Classpath Exception | <https://openjdk.org/> |
 | Magisk（APK） | 30.7 | 离线 Root 方案 | GPL-3.0 | <https://github.com/topjohnwu/Magisk> |
 | scrcpy（scrcpy.exe、scrcpy-server，许可证全文随附在 `scrcpy/LICENSE.txt`） | 5.0.1 | 投屏和控制手机 | Apache-2.0 | <https://github.com/Genymobile/scrcpy> |
 | scrcpy 自带的 FFmpeg（avcodec、avformat、avutil、swresample DLL） | 随 scrcpy 5.0.1 | 视频解码 | GNU LGPL-2.1 或更高版本 | <https://ffmpeg.org/> |
@@ -37,7 +39,7 @@
 | 组件 | 许可证 |
 |---|---|
 | Flutter 引擎与框架（含 Skia、ICU 等） | BSD-3-Clause 等，各组件的声明见程序目录 `data/flutter_assets/NOTICES.Z` |
-| file_selector、path_provider、url_launcher 及其 Windows 实现 | BSD-3-Clause |
+| file_selector、path_provider、url_launcher、tray_manager、window_manager 及其 Windows 实现 | BSD-3-Clause、MIT 等 |
 | Dart 包 path、crypto | BSD-3-Clause |
 
 这些组件的版权归各自作者所有。本项目与上述任何项目、Google、OnePlus 均无隶属或背书关系。

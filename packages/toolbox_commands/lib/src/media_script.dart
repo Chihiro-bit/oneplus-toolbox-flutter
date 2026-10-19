@@ -103,29 +103,33 @@ Future<bool> pullFileTo(Adb adb, String serial, String remote, String local) asy
 /// 手机屏幕不受影响；手机锁屏后虚拟屏照常运行
 List<String> mirrorArgs(MirrorOptions opts, String title) {
   final vd = opts.display;
+  final List<String> args;
   if (vd == null) {
-    return [
+    args = [
       '--window-title',
       title,
       if (opts.turnScreenOff) '--turn-screen-off',
       if (opts.stayAwake) '--stay-awake',
     ];
+  } else {
+    final app = vd.app;
+    if (app != null && !RegExp(r'^[\w.]+$').hasMatch(app)) {
+      throw const InvalidMirrorOptionsException('包名不合法');
+    }
+    final arg = vd.size.arg;
+    // 软键盘弹在虚拟屏上，不打扰手机屏幕；手机屏幕要留给用户用，不关屏也不保持亮屏（锁屏不影响虚拟屏）
+    args = [
+      '--window-title',
+      '$title（独立屏幕）',
+      arg != null ? '--new-display=$arg' : '--new-display',
+      '--display-ime-policy=local',
+      if (app != null && app.isNotEmpty) '--start-app=$app',
+      if (vd.keepApp) '--no-vd-destroy-content',
+      if (vd.audioOnPhone) '--no-audio',
+    ];
   }
-  final app = vd.app;
-  if (app != null && !RegExp(r'^[\w.]+$').hasMatch(app)) {
-    throw const InvalidMirrorOptionsException('包名不合法');
-  }
-  final arg = vd.size.arg;
-  // 软键盘弹在虚拟屏上，不打扰手机屏幕；手机屏幕要留给用户用，不关屏也不保持亮屏（锁屏不影响虚拟屏）
-  return [
-    '--window-title',
-    '$title（独立屏幕）',
-    arg != null ? '--new-display=$arg' : '--new-display',
-    '--display-ime-policy=local',
-    if (app != null && app.isNotEmpty) '--start-app=$app',
-    if (vd.keepApp) '--no-vd-destroy-content',
-    if (vd.audioOnPhone) '--no-audio',
-  ];
+  if (opts.alwaysOnTop) args.add('--always-on-top');
+  return args;
 }
 
 /// 投屏参数不合法。业务层收到后转成用户可见的 [OpException] 文案。

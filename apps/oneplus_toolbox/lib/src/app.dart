@@ -20,15 +20,19 @@ import 'widgets/log_panel.dart';
 import 'widgets/run_banner.dart';
 
 class ToolboxApp extends StatelessWidget {
-  const ToolboxApp({super.key, required this.controller});
+  const ToolboxApp({super.key, required this.controller, this.navigatorKey});
 
   final ToolboxController controller;
+
+  /// 窗口层用它弹出关闭确认框（测试里不需要）
+  final GlobalKey<NavigatorState>? navigatorKey;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '一加工具箱',
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
       home: Shell(tb: controller),

@@ -141,6 +141,76 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   }
 }
 
+// ───────────── 关闭确认 ─────────────
+
+/// 关闭窗口时用户的选择：收起到系统托盘 / 直接退出 / 取消
+enum CloseAction { tray, quit, cancel }
+
+/// 点关闭按钮时由窗口层弹出，样式与项目里的其它对话框一致
+class CloseDialog extends StatelessWidget {
+  const CloseDialog({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.palette;
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 500),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 26, 28, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(color: c.accentSoft, borderRadius: BorderRadius.circular(16)),
+                child: Icon(Icons.power_settings_new, size: 24, color: c.accent),
+              ),
+              const SizedBox(height: 14),
+              const Text('要关闭一加工具箱吗？', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(color: c.surface2, borderRadius: BorderRadius.circular(10)),
+                child: const Text(
+                  '选择「收起到系统托盘」后，程序会继续在后台运行，投屏和正在进行的操作都不会中断；'
+                  '点击屏幕右下角托盘里的图标即可重新打开。',
+                  style: TextStyle(fontSize: 13.5, height: 1.6),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  AppButton(
+                    label: '取消',
+                    kind: ButtonKind.ghost,
+                    onPressed: () => Navigator.pop(context, CloseAction.cancel),
+                  ),
+                  AppButton(
+                    label: '关闭程序',
+                    onPressed: () => Navigator.pop(context, CloseAction.quit),
+                  ),
+                  AppButton(
+                    label: '收起到系统托盘',
+                    icon: Icons.minimize,
+                    kind: ButtonKind.primary,
+                    onPressed: () => Navigator.pop(context, CloseAction.tray),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ───────────── 非一加设备警告 ─────────────
 
 const brandWarningSeconds = 15;

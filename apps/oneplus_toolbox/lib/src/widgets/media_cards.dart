@@ -53,6 +53,7 @@ class _MirrorCardState extends State<MirrorCard> {
   bool _separate = false;
   bool _turnScreenOff = false;
   bool _stayAwake = true;
+  bool _alwaysOnTop = false;
   List<AppEntry>? _apps;
   String _app = '';
   DisplaySize _size = DisplaySize.fullHd;
@@ -88,6 +89,7 @@ class _MirrorCardState extends State<MirrorCard> {
     final r = await tb.startMirror(MirrorOptions(
       turnScreenOff: _turnScreenOff,
       stayAwake: _stayAwake,
+      alwaysOnTop: _alwaysOnTop,
       display: _separate
           ? MirrorDisplayOptions(
               app: _app.isEmpty ? null : _app,
@@ -200,6 +202,11 @@ class _MirrorCardState extends State<MirrorCard> {
               onChanged: (v) => setState(() => _keepApp = v),
             ),
           ],
+          CheckRow(
+            value: _alwaysOnTop,
+            label: '投屏窗口始终置顶（不会被其它窗口挡住）',
+            onChanged: (v) => setState(() => _alwaysOnTop = v),
+          ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 10,

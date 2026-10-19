@@ -278,10 +278,18 @@ class MirrorDisplayOptions {
 }
 
 class MirrorOptions {
-  const MirrorOptions({this.turnScreenOff = false, this.stayAwake = false, this.display});
+  const MirrorOptions({
+    this.turnScreenOff = false,
+    this.stayAwake = false,
+    this.alwaysOnTop = false,
+    this.display,
+  });
 
   final bool turnScreenOff;
   final bool stayAwake;
+
+  /// 投屏窗口始终显示在其它窗口上面
+  final bool alwaysOnTop;
 
   /// 投到手机上新建的虚拟屏幕，而不是镜像手机屏幕：电脑上和手机上各用各的应用
   final MirrorDisplayOptions? display;

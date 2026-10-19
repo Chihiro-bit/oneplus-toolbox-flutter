@@ -28,9 +28,9 @@
 | 🩺 | **开机诊断** | 卡开机时选择看到的现象，读取槽位、解锁、系统更新合并等状态，推断可能的原因并直接给出修复按钮 |
 | 🛟 | **救援与恢复** | 一键撤销上一次刷写；刷回原厂 boot / init_boot（卸载 Root）；模块导致卡开机时禁用 / 启用 / 删除全部模块；备份 persist、基带等关键分区 |
 | 🔀 | **A/B 槽位切换** | 刷坏一个槽位时，切到另一个槽位往往能重新开机 |
-| 📦 | **安装应用** | 拖拽批量安装 `.apk`，支持 `.apks` / `.xapk` 分包（按 CPU 架构挑选分包，自动推送 OBB） |
+| 📦 | **安装应用** | 拖拽批量安装 `.apk`，支持 `.apks` / `.xapk` 分包（按 CPU 架构挑选分包，自动推送 OBB）和 `.aab`（用 bundletool 按手机配置转换成分包，内置 Java 运行时，无需自己安装 Java） |
 | 👥 | **应用管理** | 应用双开：一键把第三方应用克隆到分身空间；冻结 / 解冻应用；一键授予应用需要的 adb 权限（WRITE_SECURE_SETTINGS 等，免去手敲命令）；备份应用安装包（分包打成 `.apks`），已 Root 时可连同应用数据一起备份和恢复；预装应用：免 Root 卸载、冻结或恢复，系统必需组件不允许操作 |
-| 🖥️ | **投屏、截图、文件传输** | 内置 scrcpy 投屏，可用鼠标键盘操作手机；「独立屏幕」模式在手机上新建一块虚拟屏幕，电脑上用一个应用、手机上照常用别的，互不影响；一键截图；浏览手机存储，拖拽发送、点击接收文件 |
+| 🖥️ | **投屏、截图、文件传输** | 内置 scrcpy 投屏，可用鼠标键盘操作手机，投屏窗口可以选择始终置顶；「独立屏幕」模式在手机上新建一块虚拟屏幕，电脑上用一个应用、手机上照常用别的，互不影响；一键截图；浏览手机存储，拖拽发送、点击接收文件 |
 | 📶 | **无线调试** | `adb pair` / `adb connect`，或者插着线一键切到无线 |
 | 🔌 | **多设备** | 同时连了多台手机时，在左下角选择要操作的那一台；没选之前所有操作都会被拒绝 |
 | 🛠️ | **系统工具** | 一键安装、启动 Shizuku，并设置免 Root 开机自启（Android 13+）；拖入 zip 安装 Root 模块（Magisk / KernelSU / APatch）；修复 Wi-Fi 感叹号（联网检测改成国内地址）、设置私人 DNS；安装 Play 商店；禁用 / 恢复系统更新 |
@@ -147,6 +147,12 @@ Root 之后卡开机、或者想卸载 Root 时用。前提是还能进 Fastboot
 
 ## 常见问题
 
+**关闭窗口后程序去哪了？**
+点关闭按钮时可以选择「收起到系统托盘」：程序继续在后台运行，投屏和正在进行的操作都不会中断，点击屏幕右下角托盘里的图标即可重新打开；选择「关闭程序」才会真正退出。
+
+**安装 AAB 需要自己装 Java 吗？**
+不需要。安装包内置了精简的 Java 运行时，用来运行 bundletool 把 AAB 按手机配置转成分包 APK。转换出的分包使用调试密钥签名，如果手机上已经装了应用商店版本的同一应用，需要先卸载（会丢失应用数据，可先用「应用管理」备份）。
+
 **检测不到手机？**
 换一根支持数据传输的线、换一个 USB 口，并确认已安装 USB 驱动。手机上如果出现 USB 调试授权弹窗，要点「允许」。概览页的「检查驱动」会列出设备管理器里和手机有关的设备，告诉你缺的是哪个驱动。
 
@@ -177,6 +183,7 @@ KernelSU 系方案只支持 GKI 2.0 设备（Android 12 及以后出厂、内核
 
 - Flutter 3.22+（Dart 3.4+），`dart pub global activate melos`
 - 构建 Windows 版需要 Visual Studio（「使用 C++ 的桌面开发」工作负载），并在系统设置中开启**开发者模式**（插件需要符号链接）
+- JDK 11+（`fetch-tools` 用其中的 `jlink` 生成 AAB 转换所需的内置 Java 运行时）
 
 ```bash
 melos bootstrap
@@ -184,7 +191,7 @@ melos run fetch-tools    # 首次运行，或升级工具版本后
 melos exec --scope=oneplus_toolbox -- flutter run -d windows
 ```
 
-第三方工具（adb、fastboot、payload_dumper、7za、aapt2、scrcpy、qdl、Magisk）不提交到仓库：`melos run fetch-tools` 从官方地址下载并校验 sha256，放到 `resources/bin`；构建时 CMake 会把它复制到 exe 旁边的 `bin/`。版本与 TS 版的 `scripts/fetch-tools.mjs` 一致。
+第三方工具（adb、fastboot、payload_dumper、7za、aapt2、scrcpy、qdl、Magisk、bundletool）不提交到仓库：`melos run fetch-tools` 从官方地址下载并校验 sha256，放到 `resources/bin`；同时用构建机的 `jlink` 生成 AAB 转换所需的精简 JRE。构建时 CMake 会把整个目录复制到 exe 旁边的 `bin/`。版本与 TS 版的 `scripts/fetch-tools.mjs` 一致。
 
 其它命令：
 
@@ -233,9 +240,10 @@ packages/toolbox_core       共享模型、内置方案目录、诊断与校验�
 
 ```
 apps/oneplus_toolbox/lib/src/controller.dart  把服务的各个流转成界面状态
+apps/oneplus_toolbox/lib/src/window_shell.dart 窗口与系统托盘：关闭时询问收起 / 退出
 apps/oneplus_toolbox/lib/src/pages/       bootdiag_page（开机诊断）、rescue_page（救援与恢复）、
                                           apps_page（应用管理）、tools_page（系统工具）等各功能页面
-apps/oneplus_toolbox/lib/src/widgets/     顶栏运行状态、确认对话框、日志面板、投屏卡片、拖拽接收区域
+apps/oneplus_toolbox/lib/src/widgets/     顶栏运行状态、确认 / 关闭对话框、日志面板、投屏卡片、拖拽接收区域
 apps/oneplus_toolbox/tool/screenshots/    截图脚本与模拟数据
 packages/toolbox_service/lib/src/
   device_probe.dart                       设备识别（adb / fastboot / fastbootd / 9008 四路）、多设备选择、getprop / getvar
@@ -244,7 +252,8 @@ packages/toolbox_service/lib/src/
   ops/bootdiag.dart                       开机诊断的信息采集、取消 / 继续合并系统更新
   ops/rescue.dart                         撤销上一次刷写、刷回原厂镜像、禁用 / 启用 / 删除模块
   ops/backup.dart                         关键分区备份
-  ops/install.dart                        安装 APK / APKS / XAPK
+  ops/install.dart                        安装 APK / APKS / XAPK / AAB
+  ops/aab.dart                            AAB 转分包 APK（bundletool + 内置精简 JRE）
   ops/apps.dart                           应用双开、冻结 / 权限、预装应用卸载 / 恢复、Play 商店、系统更新开关
   ops/appbackup.dart                      应用备份与恢复（含 Root 数据）
   ops/media.dart                          投屏（scrcpy）、独立屏幕、截图、文件传输

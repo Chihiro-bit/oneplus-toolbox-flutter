@@ -95,6 +95,15 @@ final List<Tool> tools = [
     file: null,
   ),
   (
+    // AAB 不能直接安装，需要用 bundletool 按手机配置转换成分包 APK；Java 运行时由下面的 jlink 一并生成
+    name: 'bundletool v1.18.3（AAB 转 APK）',
+    url: 'https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar',
+    sha256: 'a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29',
+    entries: null,
+    tarGz: false,
+    file: 'bundletool/bundletool.jar',
+  ),
+  (
     // 不带 scrcpy 自己的 adb.exe：启动时用 ADB 环境变量指向工具箱的 adb，避免两个版本的 adb server 互相踢
     name: 'scrcpy v5.0.1（投屏）',
     url: 'https://github.com/Genymobile/scrcpy/releases/download/v5.0.1/scrcpy-win64-v5.0.1.zip',
@@ -167,6 +176,61 @@ void extract(Tool tool, Uint8List bytes) {
   }
 }
 
+/// 找到构建机的 jlink：JAVA_HOME → PATH → 常见 JDK 安装位置
+String? _findJlink() {
+  final exe = Platform.isWindows ? 'jlink.exe' : 'jlink';
+  final env = Platform.environment;
+  final pathSeparator = Platform.isWindows ? ';' : ':';
+  final candidates = <String>[
+    if ((env['JAVA_HOME'] ?? '').isNotEmpty) p.join(env['JAVA_HOME']!, 'bin', exe),
+    for (final d in (env['PATH'] ?? '').split(pathSeparator))
+      if (d.isNotEmpty) p.join(d, exe),
+  ];
+  final programFiles = env['ProgramFiles'] ?? r'C:\Program Files';
+  for (final parent in ['Java', 'Eclipse Adoptium', 'Microsoft']) {
+    try {
+      for (final entry in Directory(p.join(programFiles, parent)).listSync()) {
+        if (entry is Directory) candidates.add(p.join(entry.path, 'bin', exe));
+      }
+    } catch (_) {
+      // 目录不存在
+    }
+  }
+  for (final candidate in candidates) {
+    if (File(candidate).existsSync()) return candidate;
+  }
+  return null;
+}
+
+/// 用 jlink 生成 bundletool 需要的精简 Java 运行时，随安装包分发（用户不必自己装 Java）
+Future<void> _buildJre() async {
+  final jlink = _findJlink();
+  if (jlink == null) {
+    throw '生成内置 Java 运行时需要 JDK 11 或更高版本（找不到 jlink）。请安装 JDK，或设置 JAVA_HOME 后重试';
+  }
+  final version = Process.runSync(jlink, ['--version']).stdout.toString().trim();
+  final major = int.tryParse(RegExp(r'^\d+').firstMatch(version)?.group(0) ?? '') ?? 0;
+  stdout.writeln('✓ 精简 Java 运行时（jlink，JDK $major）');
+  final process = await Process.start(
+    jlink,
+    [
+      // bundletool 需要 java.xml（DOM）和 jdk.zipfs（读取 jar 文件系统）
+      '--add-modules',
+      'java.base,java.logging,java.xml,jdk.zipfs',
+      '--strip-debug',
+      '--no-header-files',
+      '--no-man-pages',
+      // JDK 21 起改用 zip-N 写法，旧的 0/1/2 已弃用
+      '--compress=${major >= 21 ? 'zip-6' : '2'}',
+      '--output',
+      p.join(bin, 'jre'),
+    ],
+    mode: ProcessStartMode.inheritStdio,
+  );
+  final code = await process.exitCode;
+  if (code != 0) throw 'jlink 生成 Java 运行时失败（退出码 $code）';
+}
+
 Future<void> main() async {
   final dir = Directory(bin);
   if (dir.existsSync()) dir.deleteSync(recursive: true);
@@ -179,9 +243,11 @@ Future<void> main() async {
       if (tool.entries != null) {
         extract(tool, bytes);
       } else {
-        File(p.join(bin, tool.file!)).writeAsBytesSync(bytes);
+        final out = File(p.join(bin, tool.file!))..parent.createSync(recursive: true);
+        out.writeAsBytesSync(bytes);
       }
     }
+    await _buildJre();
   } catch (e) {
     stderr.writeln('$e');
     exitCode = 1;

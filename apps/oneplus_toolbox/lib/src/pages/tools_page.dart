@@ -12,7 +12,7 @@ import '../widgets/media_cards.dart';
 /// 系统工具页。对应 TS 版 src/renderer/src/tools.tsx：
 /// 安装应用（拖拽 / 批量）、安装 Play 商店、禁用 / 恢复系统更新、Shizuku、联网修复与私人 DNS、安装 Root 模块，
 /// 以及投屏截图、文件传输、无线调试三个卡片（在 widgets/media_cards.dart 里）。
-const _installExtensions = ['apk', 'apks', 'xapk'];
+const _installExtensions = ['apk', 'apks', 'xapk', 'aab'];
 
 bool _isInstallable(String path) => _installExtensions.contains(path.split('.').last.toLowerCase());
 
@@ -139,6 +139,8 @@ class _ToolsPageState extends State<ToolsPage> {
                           TextSpan(text: '.apks', style: _codeStyle(c)),
                           const TextSpan(text: ' / '),
                           TextSpan(text: '.xapk', style: _codeStyle(c)),
+                          const TextSpan(text: ' / '),
+                          TextSpan(text: '.aab', style: _codeStyle(c)),
                           const TextSpan(text: ' 拖到这里，可以一次拖多个'),
                         ]),
                         textAlign: TextAlign.center,
@@ -167,6 +169,12 @@ class _ToolsPageState extends State<ToolsPage> {
                   onRemove: (f) => setState(() => _installFiles.remove(f)),
                 ),
               ],
+              const SizedBox(height: 12),
+              const Muted(
+                '.aab 会按当前手机的配置转换成分包 APK（使用内置 Java 运行时，无需自己安装）；'
+                '转换后使用调试密钥签名，不能覆盖从应用商店安装的同一应用。',
+                small: true,
+              ),
               const SizedBox(height: 16),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,7 +336,7 @@ class _FileList extends StatelessWidget {
   final bool busy;
   final ValueChanged<String> onRemove;
 
-  /// 不是单个 .apk 时标出「分包」（.apks / .xapk）
+  /// 不是单个 .apk 时标出「分包」（.apks / .xapk）或「AAB」
   final bool withSplitChip;
 
   @override
@@ -351,7 +359,7 @@ class _FileList extends StatelessWidget {
                 ),
                 if (withSplitChip && !f.toLowerCase().endsWith('.apk')) ...[
                   const SizedBox(width: 8),
-                  const TagChip('分包'),
+                  TagChip(f.toLowerCase().endsWith('.aab') ? 'AAB' : '分包'),
                 ],
                 IconButton(
                   tooltip: '移除',

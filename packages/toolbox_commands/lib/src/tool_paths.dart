@@ -22,6 +22,12 @@ class ToolPaths {
   /// 投屏，随附的 DLL 和 scrcpy-server 必须与它同目录
   String get scrcpy => p.join(binDir, 'scrcpy', 'scrcpy.exe');
 
+  /// AAB 转分包 APK
+  String get bundletool => p.join(binDir, 'bundletool', 'bundletool.jar');
+
+  /// 随安装包的精简 Java 运行时（bundletool 用），用户不需要自己安装 Java
+  String get java => p.join(binDir, 'jre', 'bin', 'java.exe');
+
   /// 高通 9008 / EDL 刷写工具，随附的 DLL 必须与它同目录
   String get qdl => p.join(binDir, 'qdl', 'qdl.exe');
 
@@ -33,6 +39,8 @@ class ToolPaths {
         'magiskApk': magiskApk,
         'aapt2': aapt2,
         'scrcpy': scrcpy,
+        'bundletool': bundletool,
+        'java': java,
         'qdl': qdl,
       };
 

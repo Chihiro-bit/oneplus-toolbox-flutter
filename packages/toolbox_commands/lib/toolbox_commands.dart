@@ -4,6 +4,7 @@
 /// 前置检查、流程编排、给用户看的提示都在 toolbox_service 里。
 library;
 
+export 'src/aab.dart';
 export 'src/adb.dart';
 export 'src/app_data.dart';
 export 'src/app_list.dart';

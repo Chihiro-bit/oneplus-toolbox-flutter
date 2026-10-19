@@ -73,6 +73,12 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
+      # fetch-tools 用 jlink 生成 AAB 转换所需的内置 Java 运行时
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       # melos.yaml 里的脚本会再调用 melos 命令，所以要全局安装并加到 PATH（版本与 pubspec.lock 一致）
       - name: 安装 melos
         run: |

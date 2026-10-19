@@ -116,6 +116,21 @@ void main() {
     expect(await result, isTrue);
   });
 
+  testWidgets('关闭确认框可以选择收起到托盘、关闭或取消', (tester) async {
+    await pumpApp(tester);
+    final context = tester.element(find.byType(Scaffold));
+    final result = showDialog<CloseAction>(context: context, builder: (_) => const CloseDialog());
+    await tester.pumpAndSettle();
+
+    expect(find.text('要关闭一加工具箱吗？'), findsOneWidget);
+    expect(find.text('收起到系统托盘'), findsOneWidget);
+    expect(find.text('关闭程序'), findsOneWidget);
+
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(await result, CloseAction.cancel);
+  });
+
   test('gate', () {
     expect(gate(tb, {DeviceMode.system}).reason, '未连接设备');
   });
