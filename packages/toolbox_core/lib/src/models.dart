@@ -1127,11 +1127,12 @@ class ListSystemAppsRequest extends OperationRequest {
 }
 
 class DebloatRequest extends OperationRequest {
-  const DebloatRequest(this.package, {required this.remove});
+  const DebloatRequest(this.package, {required this.remove, this.root = false});
   final String package;
   final bool remove;
+  final bool root;
   @override
-  String get description => remove ? '卸载 $package' : '恢复 $package';
+  String get description => remove ? '${root ? 'Root 强制' : ''}卸载 $package' : '恢复 $package';
 }
 
 class InstallPlayRequest extends OperationRequest {
@@ -1326,8 +1327,12 @@ class RemoteListing {
 
 // ───────────── 设置与更新 ─────────────
 
+enum CloseBehavior { ask, tray, quit }
+
 class Settings {
-  const Settings({this.catalogUrl = '', this.updateRepo = ''});
+  const Settings({this.catalogUrl = '', this.updateRepo = '', this.closeBehavior = CloseBehavior.ask});
+
+  final CloseBehavior closeBehavior;
 
   /// 远程方案目录（只含数据：URL + sha256），留空则只用内置目录
   final String catalogUrl;
@@ -1338,12 +1343,17 @@ class Settings {
   factory Settings.fromJson(Map<String, Object?> json, {Settings defaults = const Settings()}) => Settings(
         catalogUrl: json['catalogUrl'] is String ? json['catalogUrl'] as String : defaults.catalogUrl,
         updateRepo: json['updateRepo'] is String ? json['updateRepo'] as String : defaults.updateRepo,
+        closeBehavior:
+            CloseBehavior.values.where((v) => v.name == json['closeBehavior']).firstOrNull ?? CloseBehavior.ask,
       );
 
-  Map<String, Object?> toJson() => {'catalogUrl': catalogUrl, 'updateRepo': updateRepo};
+  Map<String, Object?> toJson() =>
+      {'catalogUrl': catalogUrl, 'updateRepo': updateRepo, 'closeBehavior': closeBehavior.name};
 
-  Settings copyWith({String? catalogUrl, String? updateRepo}) =>
-      Settings(catalogUrl: catalogUrl ?? this.catalogUrl, updateRepo: updateRepo ?? this.updateRepo);
+  Settings copyWith({String? catalogUrl, String? updateRepo, CloseBehavior? closeBehavior}) => Settings(
+      catalogUrl: catalogUrl ?? this.catalogUrl,
+      updateRepo: updateRepo ?? this.updateRepo,
+      closeBehavior: closeBehavior ?? this.closeBehavior);
 }
 
 class UpdateInfo {

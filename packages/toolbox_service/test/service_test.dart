@@ -56,6 +56,17 @@ void main() {
   });
 
   group('SettingsStore', () {
+    test('记住关闭行为可保存与重置，旧配置默认询问', () {
+      final store = SettingsStore(tmp.path);
+      expect(store.load().closeBehavior, CloseBehavior.ask);
+      expect(Settings.fromJson({'closeBehavior': 'invalid'}).closeBehavior, CloseBehavior.ask);
+      for (final behavior in CloseBehavior.values) {
+        store.save(Settings(updateRepo: 'owner/repo', closeBehavior: behavior));
+        expect(store.load().closeBehavior, behavior);
+        expect(store.load().updateRepo, 'owner/repo');
+        expect(store.load().toJson()['closeBehavior'], behavior.name);
+      }
+    });
     test('没有文件时用默认值', () {
       final s = SettingsStore(tmp.path, defaultUpdateRepo: 'a/b').load();
       expect(s.catalogUrl, '');

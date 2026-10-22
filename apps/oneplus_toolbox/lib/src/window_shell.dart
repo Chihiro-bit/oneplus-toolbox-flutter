@@ -53,6 +53,17 @@ class WindowShell with WindowListener, TrayListener {
 
   /// 弹出关闭确认框。界面还没加载好时直接退出（与 TS 版 rendererReady 的处理一致）
   Future<void> _requestClose() async {
+    if (_dialogOpen) return;
+    switch (service.settings.closeBehavior) {
+      case CloseBehavior.tray:
+        await _hideToTray();
+        return;
+      case CloseBehavior.quit:
+        await quit();
+        return;
+      case CloseBehavior.ask:
+        break;
+    }
     await _showWindow();
     if (_dialogOpen) return;
     final context = navigatorKey.currentContext;
@@ -61,9 +72,13 @@ class WindowShell with WindowListener, TrayListener {
       return;
     }
     _dialogOpen = true;
-    final action = await showDialog<CloseAction>(context: context, builder: (_) => const CloseDialog());
-    _dialogOpen = false;
-    await resolveClose(action ?? CloseAction.cancel);
+    try {
+      final choice = await showDialog<CloseChoice>(
+          context: context, builder: (_) => CloseDialog(onRemember: service.rememberCloseBehavior));
+      await resolveClose(choice?.action ?? CloseAction.cancel);
+    } finally {
+      _dialogOpen = false;
+    }
   }
 
   /// 界面里的关闭确认框给出选择后调用

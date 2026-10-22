@@ -5,7 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:toolbox_service/toolbox_service.dart';
 
 /// 构建时可用 --dart-define 覆盖，与 TS 版的 TOOLBOX_UPDATE_REPO 环境变量对应
-const appVersion = String.fromEnvironment('TOOLBOX_VERSION', defaultValue: '1.3.0');
+const appVersion = String.fromEnvironment('TOOLBOX_VERSION', defaultValue: '1.4.0');
 const defaultUpdateRepo = String.fromEnvironment('TOOLBOX_UPDATE_REPO');
 
 /// 按平台取得各类目录，交给业务层

@@ -3,7 +3,7 @@ description: 一加工具箱 Flutter 版（界面层）。只依赖 toolbox_serv
 publish_to: 'none'
 
 # 与 TS 版 package.json 的 version 保持一致；构建时也可用 --dart-define=TOOLBOX_VERSION=x.y.z 覆盖
-version: 1.3.0+1
+version: 1.4.0+1
 
 environment:
   sdk: '>=3.4.3 <4.0.0'

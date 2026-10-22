@@ -35,28 +35,48 @@ Future<ExecResult> exec(
   cancel?.throwIfCancelled();
   log?.call(LogLevel.cmd, '${p.basenameWithoutExtension(file)} ${args.map(_quoteForLog).join(' ')}');
 
-  final process = await Process.start(file, args);
+  final watch = Stopwatch()..start();
+  late final Process process;
+  try {
+    process = await Process.start(file, args);
+  } catch (e) {
+    log?.call(LogLevel.error, '命令启动失败：$e（耗时 ${watch.elapsedMilliseconds} ms）');
+    rethrow;
+  }
   final stdout = StringBuffer();
   final stderr = StringBuffer();
   final all = StringBuffer();
-  var pending = '';
+  final result = Completer<ExecResult>();
+  final flushers = <void Function()>[];
 
-  void flush({bool last = false}) {
-    if (log == null || !echoOutput) return;
-    final parts = pending.split(RegExp(r'\r?\n|\r'));
-    pending = last ? '' : parts.removeLast();
-    for (final line in parts) {
-      if (line.trim().isNotEmpty) log(LogLevel.info, line.trimRight());
+  StreamSubscription<String> listen(Stream<List<int>> stream, StringBuffer into) {
+    var pending = '';
+    void flush({bool last = false}) {
+      if (log == null || !echoOutput) return;
+      final parts = pending.split(RegExp(r'\r\n|[\r\n]'));
+      pending = last ? '' : parts.removeLast();
+      for (final line in parts) {
+        if (line.trim().isNotEmpty) log(LogLevel.info, line.trimRight());
+      }
     }
-  }
 
-  StreamSubscription<String> listen(Stream<List<int>> stream, StringBuffer into) =>
-      stream.transform(const Utf8Decoder(allowMalformed: true)).listen((s) {
-        into.write(s);
-        all.write(s);
+    flushers.add(() => flush(last: true));
+    return stream.transform(const Utf8Decoder(allowMalformed: true)).listen((s) {
+      if (result.isCompleted) return;
+      into.write(s);
+      all.write(s);
+      if (echoOutput && log != null) {
         pending += s;
         flush();
-      });
+      }
+    });
+  }
+
+  void flushAll() {
+    for (final flush in flushers) {
+      flush();
+    }
+  }
 
   final outDone = listen(process.stdout, stdout).asFuture<void>();
   final errDone = listen(process.stderr, stderr).asFuture<void>();
@@ -64,21 +84,34 @@ Future<ExecResult> exec(
   if (stdin != null) process.stdin.write(stdin);
   unawaited(process.stdin.close().catchError((_) {}));
 
-  final result = Completer<ExecResult>();
   final timer = Timer(timeout, () {
     if (result.isCompleted) return;
     process.kill();
+    flushAll();
+    log?.call(LogLevel.error, '命令超时（限制 ${timeout.inMilliseconds} ms，耗时 ${watch.elapsedMilliseconds} ms）');
     result.complete(ExecResult(-1, '$stdout', '$stderr\n[超时]', '$all\n[超时]'));
   });
   cancel?.whenCancelled.then((_) {
     if (result.isCompleted) return;
     process.kill();
+    flushAll();
+    log?.call(LogLevel.warn, '命令已取消（耗时 ${watch.elapsedMilliseconds} ms）');
     result.completeError(const CancelledException());
   });
   unawaited(process.exitCode.then((code) async {
-    await Future.wait([outDone, errDone]);
-    flush(last: true);
-    if (!result.isCompleted) result.complete(ExecResult(code, '$stdout', '$stderr', '$all'));
+    try {
+      await Future.wait([outDone, errDone]);
+      if (result.isCompleted) return;
+      flushAll();
+      log?.call(code == 0 ? LogLevel.info : LogLevel.error,
+          '命令结束：退出码 $code，耗时 ${watch.elapsedMilliseconds} ms${echoOutput ? '' : '（此命令的输出为内部数据，不在日志中显示）'}');
+      result.complete(ExecResult(code, '$stdout', '$stderr', '$all'));
+    } catch (e, stack) {
+      if (result.isCompleted) return;
+      flushAll();
+      log?.call(LogLevel.error, '命令输出读取失败：$e');
+      result.completeError(e, stack);
+    }
   }));
 
   try {
@@ -89,12 +122,8 @@ Future<ExecResult> exec(
 }
 
 String _quoteForLog(String a) {
-  // 多行 shell 脚本只显示第一行，避免刷屏
-  if (a.contains('\n')) {
-    final lines = a.split('\n');
-    return '"${lines.first} …"（共 ${lines.length} 行脚本）';
-  }
-  return RegExp(r'[\s"]').hasMatch(a) ? '"$a"' : a;
+  // 只用于显示，保留完整脚本以及参数边界，不作为 shell 命令执行。
+  return a.isEmpty || RegExp(r'[\s"\\]').hasMatch(a) ? '"${a.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"' : a;
 }
 
 /// 可取消的等待

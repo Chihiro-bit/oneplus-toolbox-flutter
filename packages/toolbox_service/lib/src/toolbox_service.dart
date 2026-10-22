@@ -195,7 +195,8 @@ class ToolboxService {
       ListAppsRequest() => apps.listApps(ctx, _icons),
       ListSystemAppsRequest() => apps.listSystemApps(ctx),
       ListUserAppsRequest() => apps.listUserApps(ctx),
-      DebloatRequest(:final package, :final remove) => apps.debloat(package, ctx, remove: remove),
+      DebloatRequest(:final package, :final remove, :final root) =>
+        apps.debloat(package, ctx, remove: remove, root: root),
       FreezeAppRequest(:final package, :final freeze) => apps.freezeApp(package, ctx, freeze: freeze),
       CloneAppRequest(:final package, :final enable) => apps.cloneApp(package, ctx, enable: enable),
       AppPermissionsRequest(:final package) => permissions.appPermissions(package, ctx),
@@ -254,6 +255,9 @@ class ToolboxService {
   Future<CatalogState> catalog({bool refresh = false}) => _catalog.get(refresh: refresh);
 
   Settings get settings => _settings.load();
+
+  /// 窗口选择只保存本地偏好，不触发远程目录刷新。
+  void rememberCloseBehavior(CloseBehavior behavior) => _settings.save(settings.copyWith(closeBehavior: behavior));
 
   /// 保存设置并按新地址重新读取方案目录。格式不正确时抛出 [SettingsException]。
   Future<Settings> saveSettings(Settings s) async {

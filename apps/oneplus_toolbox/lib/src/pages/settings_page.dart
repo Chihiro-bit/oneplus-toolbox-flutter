@@ -23,6 +23,7 @@ class _SettingsPageState extends State<SettingsPage> {
   UpdateInfo? _update;
   bool _checking = false;
   bool _saving = false;
+  CloseBehavior _closeBehavior = CloseBehavior.ask;
 
   ToolboxService get service => widget.tb.service;
 
@@ -30,6 +31,7 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     final s = service.settings;
+    _closeBehavior = s.closeBehavior;
     _catalogUrl.text = s.catalogUrl;
     _updateRepo.text = s.updateRepo;
     service.catalog().then((c) {
@@ -53,7 +55,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      final s = await service.saveSettings(Settings(catalogUrl: _catalogUrl.text, updateRepo: _updateRepo.text));
+      final s = await service.saveSettings(
+          Settings(catalogUrl: _catalogUrl.text, updateRepo: _updateRepo.text, closeBehavior: _closeBehavior));
       final c = await service.catalog();
       _catalogUrl.text = s.catalogUrl;
       _updateRepo.text = s.updateRepo;
@@ -84,6 +87,32 @@ class _SettingsPageState extends State<SettingsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const PageHeader('设置', '方案目录、版本更新、日志与诊断'),
+        AppCard(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const CardTitle('窗口关闭行为'),
+          const Muted('点击窗口右上角关闭按钮时，按以下方式处理。选择“每次询问”可重新显示关闭确认弹窗。', small: true),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<CloseBehavior>(
+            value: _closeBehavior,
+            decoration: const InputDecoration(labelText: '关闭按钮操作'),
+            items: const [
+              DropdownMenuItem(value: CloseBehavior.ask, child: Text('每次询问')),
+              DropdownMenuItem(value: CloseBehavior.tray, child: Text('收起到系统托盘')),
+              DropdownMenuItem(value: CloseBehavior.quit, child: Text('直接退出程序')),
+            ],
+            onChanged: _saving
+                ? null
+                : (v) {
+                    if (v != null) setState(() => _closeBehavior = v);
+                  },
+          ),
+          const SizedBox(height: 16),
+          AppButton(
+              label: '保存设置', icon: Icons.save_outlined, kind: ButtonKind.primary, onPressed: _saving ? null : _save),
+          if (_saveMsg case (final ok, final text))
+            Text(text, style: TextStyle(fontSize: 12.5, color: ok ? c.ok : c.danger)),
+        ])),
+        const SizedBox(height: 14),
         AppCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

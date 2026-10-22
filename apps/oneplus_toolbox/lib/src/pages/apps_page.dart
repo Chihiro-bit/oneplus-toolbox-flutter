@@ -115,12 +115,12 @@ class _AppsPageState extends State<AppsPage> {
 
   // ───────────── 预装应用：卸载 / 恢复 ─────────────
 
-  Future<void> _toggleSystem(AppEntry a) async {
+  Future<void> _toggleSystem(AppEntry a, {bool root = false}) async {
     Future<void> run() async {
       setState(() => _pending = a.package);
       final r = await tb.start(
-        a.removed ? '恢复：${a.label}' : '卸载：${a.label}',
-        DebloatRequest(a.package, remove: !a.removed),
+        a.removed ? '恢复：${a.label}' : '${root ? 'Root 强制' : ''}卸载：${a.label}',
+        DebloatRequest(a.package, remove: !a.removed, root: root),
       );
       if (!mounted) return;
       setState(() {
@@ -133,12 +133,15 @@ class _AppsPageState extends State<AppsPage> {
     final ok = await confirmAction(
       context,
       ConfirmSpec(
-        title: '卸载 ${a.label}',
+        title: '${root ? 'Root 强制' : ''}卸载 ${a.label}',
         intro: '对当前用户卸载 ${a.package}（pm uninstall --user 0）。'
             'APK 仍保留在系统分区，随时可以在这里恢复，恢复出厂设置也会让它回来。'
-            '卸掉其它应用依赖的组件，可能导致相关功能失灵甚至反复崩溃。',
+            '卸掉其它应用依赖的组件，可能导致相关功能失灵甚至反复崩溃。'
+            '${root ? '\n将请求手机 Root 授权，仅移除当前用户的应用，保留系统 APK 和应用数据。Root 也可能无法绕过厂商限制，失败时请查看日志。' : ''}',
         checks: ['我确认知道这个应用是做什么的，卸载它不会影响我需要的功能'],
         confirmText: '卸载',
+        confirmationPhrase: '我已充分了解卸载风险，并确认卸载该应用不会影响系统及所需功能',
+        waitSeconds: 10,
       ),
     );
     if (ok) await run();
@@ -453,6 +456,20 @@ class _AppsPageState extends State<AppsPage> {
           const SizedBox(width: 12),
           if (!a.removed) freeze,
           if (!a.removed) const SizedBox(width: 8),
+          if (!a.removed) ...[
+            Gated(
+              reason: a.protected
+                  ? '系统运行必需的组件，不允许卸载'
+                  : !_rooted
+                      ? '需要手机已 Root'
+                      : g.reason,
+              child: AppButton(
+                  label: 'Root 强制卸载',
+                  kind: ButtonKind.ghost,
+                  onPressed: disabled || a.protected || !_rooted ? null : () => _toggleSystem(a, root: true)),
+            ),
+            const SizedBox(width: 8),
+          ],
           Gated(
             reason: a.protected && !a.removed ? '系统运行必需的组件，不允许卸载' : g.reason,
             child: AppButton(
@@ -562,7 +579,8 @@ class _AppsPageState extends State<AppsPage> {
             Callout(Tone.warn,
                 text: '卸载和冻结都只针对当前用户，不需要 Root，随时可以恢复。'
                     '但工具箱不知道哪些预装应用停掉后会影响其它功能，请只处理你确认用不到的。'
-                    '开机、解锁、权限管理等必需组件已被锁定，不能卸载或冻结。'),
+                    '开机、解锁、权限管理等必需组件已被锁定，不能卸载或冻结。'
+                    '普通卸载失败时可尝试 Root 强制卸载，需要手机 Root 授权。每次卸载均需等待 10 秒并输入确认语句。'),
           ],
       };
 }

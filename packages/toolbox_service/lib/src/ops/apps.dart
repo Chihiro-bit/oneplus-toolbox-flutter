@@ -157,17 +157,34 @@ Future<OperationResult> listSystemApps(OpContext ctx) async {
 
 /// remove：pm uninstall --user 0，只对当前用户卸载，系统分区里的 APK 还在；
 /// restore：pm install-existing 恢复。恢复出厂设置也会让所有被卸载的预装应用回来
-Future<OperationResult> debloat(String pkg, OpContext ctx, {required bool remove}) async {
+Future<OperationResult> debloat(String pkg, OpContext ctx, {required bool remove, bool root = false}) async {
   if (!isValidPackageName(pkg)) throw const OpException('包名不合法');
+  if (root && !remove) throw const OpException('Root 强制卸载仅用于卸载操作');
   if (remove && protectedPackages.contains(pkg)) {
     throw OpException('$pkg 是系统运行必需的组件，卸载后可能无法开机或无法恢复，工具箱不允许卸载');
   }
   final serial = await ctx.requireSystem();
+  if (root) {
+    ctx.step('正在请求 Root 权限，请在手机上允许授权');
+    final id = await ctx.adb.shell(serial, ["timeout 30 su -c 'id -u' 2>&1"], timeout: const Duration(seconds: 45));
+    if (!id.ok || !id.stdout.split(RegExp(r'\r?\n')).any((line) => line.trim() == '0')) {
+      throw const OpException('未获得 Root 权限，请确认手机已 Root 并允许工具箱的 Shell 授权');
+    }
+  }
   ctx.step(remove ? '正在卸载 $pkg' : '正在恢复 $pkg');
-  final r =
-      await ctx.adb.shell(serial, remove ? apps_script.debloatRemoveArgs(pkg) : apps_script.debloatRestoreArgs(pkg));
+  final r = await ctx.adb.shell(
+      serial,
+      root
+          ? ['timeout 30 su -c \'pm uninstall -k --user 0 $pkg\' 2>&1']
+          : remove
+              ? apps_script.debloatRemoveArgs(pkg)
+              : apps_script.debloatRestoreArgs(pkg),
+      timeout: const Duration(seconds: 45));
   final ok = r.ok && RegExp('Success|installed for user', caseSensitive: false).hasMatch(r.all);
-  if (!ok) return OperationResult.fail(remove ? '卸载 $pkg 失败，详见日志' : '恢复 $pkg 失败，详见日志');
+  if (!ok) {
+    return OperationResult.fail(
+        remove ? '${root ? 'Root 强制' : ''}卸载 $pkg 失败，${root ? '系统仍拒绝卸载该应用，' : ''}详见日志' : '恢复 $pkg 失败，详见日志');
+  }
   return OperationResult(ok: true, message: remove ? '已卸载 $pkg（只对当前用户，可以随时恢复）' : '已恢复 $pkg');
 }
 

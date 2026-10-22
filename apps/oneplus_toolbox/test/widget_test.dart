@@ -116,10 +116,68 @@ void main() {
     expect(await result, isTrue);
   });
 
+  testWidgets('每个卸载确认都重新等待十秒并精确核对确认语句', (tester) async {
+    await pumpApp(tester);
+    const phrase = '我已充分了解卸载风险，并确认卸载该应用不会影响系统及所需功能';
+    for (var i = 0; i < 2; i++) {
+      final result = confirmAction(
+          tester.element(find.byType(Scaffold)),
+          ConfirmSpec(
+              title: '卸载应用 $i',
+              checks: const ['确认用途'],
+              confirmText: '卸载',
+              waitSeconds: 10,
+              confirmationPhrase: phrase));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('确认用途'));
+      await tester.enterText(find.byType(TextField), phrase);
+      await tester.pump();
+      expect(tester.widget<FilledButton>(find.byType(FilledButton).last).onPressed, isNull);
+      await tester.pump(const Duration(seconds: 10));
+      await tester.enterText(find.byType(TextField), '$phrase。');
+      await tester.pump();
+      expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, '卸载')).onPressed, isNull);
+      await tester.enterText(find.byType(TextField), phrase);
+      await tester.pump();
+      await tester.tap(find.text('卸载'));
+      await tester.pumpAndSettle();
+      expect(await result, isTrue);
+    }
+  });
+
+  testWidgets('记住关闭操作，取消不保存，保存失败时保留弹窗', (tester) async {
+    await pumpApp(tester);
+    final remembered = <CloseBehavior>[];
+    for (final action in ['取消', '收起到系统托盘', '关闭程序']) {
+      final result = showDialog<CloseChoice>(
+          context: tester.element(find.byType(Scaffold)), builder: (_) => CloseDialog(onRemember: remembered.add));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('记住本次操作（可在设置中更改）'));
+      await tester.pump();
+      await tester.tap(find.text(action));
+      await tester.pumpAndSettle();
+      expect((await result)?.remember, action != '取消');
+    }
+    expect(remembered, [CloseBehavior.tray, CloseBehavior.quit]);
+    final failed = showDialog<CloseChoice>(
+        context: tester.element(find.byType(Scaffold)),
+        builder: (_) => CloseDialog(onRemember: (_) => throw const FileSystemException('test')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('记住本次操作（可在设置中更改）'));
+    await tester.pump();
+    await tester.tap(find.text('收起到系统托盘'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('无法保存关闭设置'), findsOneWidget);
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect((await failed)?.action, CloseAction.cancel);
+  });
+
   testWidgets('关闭确认框可以选择收起到托盘、关闭或取消', (tester) async {
     await pumpApp(tester);
     final context = tester.element(find.byType(Scaffold));
-    final result = showDialog<CloseAction>(context: context, builder: (_) => const CloseDialog());
+    final result = showDialog<CloseChoice>(context: context, builder: (_) => const CloseDialog());
     await tester.pumpAndSettle();
 
     expect(find.text('要关闭一加工具箱吗？'), findsOneWidget);
@@ -128,7 +186,7 @@ void main() {
 
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
-    expect(await result, CloseAction.cancel);
+    expect((await result)?.action, CloseAction.cancel);
   });
 
   test('gate', () {

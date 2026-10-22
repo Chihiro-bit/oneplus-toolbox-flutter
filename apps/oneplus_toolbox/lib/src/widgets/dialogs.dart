@@ -16,6 +16,8 @@ class ConfirmSpec {
     required this.confirmText,
     this.intro,
     this.danger = false,
+    this.confirmationPhrase,
+    this.waitSeconds = 0,
   });
 
   final String title;
@@ -25,6 +27,8 @@ class ConfirmSpec {
   final String? intro;
   final List<String> checks;
   final String confirmText;
+  final String? confirmationPhrase;
+  final int waitSeconds;
 }
 
 /// 弹出确认对话框，全部勾选（危险操作还需输入确认码）并点击确认时返回 true
@@ -46,8 +50,33 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   late final List<bool> _checked = List.filled(widget.spec.checks.length, false);
   final _code = randomCode();
   String _input = '';
+  String _phrase = '';
+  late int _left;
+  Timer? _timer;
 
-  bool get _ready => _checked.every((v) => v) && (!widget.spec.danger || _input.trim().toUpperCase() == _code);
+  @override
+  void initState() {
+    super.initState();
+    _left = widget.spec.waitSeconds;
+    if (_left > 0) {
+      _timer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+        setState(() => _left = (widget.spec.waitSeconds - timer.tick ~/ 5).clamp(0, widget.spec.waitSeconds));
+        if (_left == 0) timer.cancel();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  bool get _ready =>
+      _left == 0 &&
+      _checked.every((v) => v) &&
+      (!widget.spec.danger || _input.trim().toUpperCase() == _code) &&
+      (widget.spec.confirmationPhrase == null || _phrase == widget.spec.confirmationPhrase);
 
   @override
   Widget build(BuildContext context) {
@@ -120,6 +149,19 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                   ),
                 ),
               ],
+              if (spec.confirmationPhrase case final phrase?) ...[
+                const SizedBox(height: 14),
+                Text('请输入「$phrase」', style: const TextStyle(fontSize: 13.5)),
+                const SizedBox(height: 8),
+                TextField(
+                  enableSuggestions: false,
+                  autocorrect: false,
+                  onChanged: (v) => setState(() => _phrase = v),
+                  onSubmitted: (_) {
+                    if (_ready) Navigator.pop(context, true);
+                  },
+                ),
+              ],
               const SizedBox(height: 18),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -127,7 +169,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                   AppButton(label: '取消', kind: ButtonKind.ghost, onPressed: () => Navigator.pop(context, false)),
                   const SizedBox(width: 8),
                   AppButton(
-                    label: spec.confirmText,
+                    label: _left > 0 ? '请阅读风险提示（$_left 秒）' : spec.confirmText,
                     kind: spec.danger ? ButtonKind.danger : ButtonKind.primary,
                     onPressed: _ready ? () => Navigator.pop(context, true) : null,
                   ),
@@ -146,9 +188,35 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
 /// 关闭窗口时用户的选择：收起到系统托盘 / 直接退出 / 取消
 enum CloseAction { tray, quit, cancel }
 
+class CloseChoice {
+  const CloseChoice(this.action, {this.remember = false});
+  final CloseAction action;
+  final bool remember;
+}
+
 /// 点关闭按钮时由窗口层弹出，样式与项目里的其它对话框一致
-class CloseDialog extends StatelessWidget {
-  const CloseDialog({super.key});
+class CloseDialog extends StatefulWidget {
+  const CloseDialog({super.key, this.onRemember});
+  final void Function(CloseBehavior)? onRemember;
+
+  @override
+  State<CloseDialog> createState() => _CloseDialogState();
+}
+
+class _CloseDialogState extends State<CloseDialog> {
+  bool _remember = false;
+  String? _error;
+
+  void _choose(CloseAction action) {
+    try {
+      if (_remember && action != CloseAction.cancel) {
+        widget.onRemember?.call(action == CloseAction.tray ? CloseBehavior.tray : CloseBehavior.quit);
+      }
+      Navigator.pop(context, CloseChoice(action, remember: _remember && action != CloseAction.cancel));
+    } catch (_) {
+      setState(() => _error = '无法保存关闭设置，请重试或取消勾选“记住本次操作”。');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -180,6 +248,9 @@ class CloseDialog extends StatelessWidget {
                   style: TextStyle(fontSize: 13.5, height: 1.6),
                 ),
               ),
+              const SizedBox(height: 14),
+              CheckRow(value: _remember, label: '记住本次操作（可在设置中更改）', onChanged: (v) => setState(() => _remember = v)),
+              if (_error != null) Text(_error!, style: TextStyle(color: c.danger, fontSize: 12.5)),
               const SizedBox(height: 18),
               Wrap(
                 alignment: WrapAlignment.center,
@@ -189,17 +260,17 @@ class CloseDialog extends StatelessWidget {
                   AppButton(
                     label: '取消',
                     kind: ButtonKind.ghost,
-                    onPressed: () => Navigator.pop(context, CloseAction.cancel),
+                    onPressed: () => _choose(CloseAction.cancel),
                   ),
                   AppButton(
                     label: '关闭程序',
-                    onPressed: () => Navigator.pop(context, CloseAction.quit),
+                    onPressed: () => _choose(CloseAction.quit),
                   ),
                   AppButton(
                     label: '收起到系统托盘',
                     icon: Icons.minimize,
                     kind: ButtonKind.primary,
-                    onPressed: () => Navigator.pop(context, CloseAction.tray),
+                    onPressed: () => _choose(CloseAction.tray),
                   ),
                 ],
               ),

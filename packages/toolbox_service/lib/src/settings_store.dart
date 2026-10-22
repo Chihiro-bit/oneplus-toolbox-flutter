@@ -32,6 +32,7 @@ class SettingsStore {
   /// 清理并校验后保存，返回实际保存的值
   Settings save(Settings s) {
     final clean = Settings(
+      closeBehavior: s.closeBehavior,
       catalogUrl: s.catalogUrl.trim(),
       updateRepo:
           s.updateRepo.trim().replaceFirst(RegExp(r'^https://github\.com/'), '').replaceFirst(RegExp(r'/$'), ''),
